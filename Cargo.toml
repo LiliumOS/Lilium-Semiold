@@ -1,0 +1,2 @@
+[workspace]
+members = ["phantom-loader","phantom-panic-halt","phantom-kernel"]
