@@ -9,4 +9,4 @@ edition = "2021"
 phantom-panic-halt = {path="../phantom-panic-halt"}
 
 [lib]
-crate-type=["cdylib"]
+crate-type=["dylib"]

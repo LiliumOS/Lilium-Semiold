@@ -1,0 +1,9 @@
+
+# Variables
+
+RUSTC = @RUSTC@
+RUSTFLAGS = @RUSTFLAGS@
+CC = @CC@
+CFLAGS = @CFLAGS@
+
+INSTALL = @INSTALL@

@@ -4,3 +4,5 @@ extern crate phantom_panic_halt;
 
 #[no_mangle]
 pub unsafe extern "C" fn kernel_main() {}
+
+pub mod search;
