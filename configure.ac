@@ -11,16 +11,21 @@ case "$host" in
     *-*-phantom-kernel )
         ;;
     * )
-        AC_MSG_ERROR([Invalid target for configuring PhantomOS $target])
+        AC_MSG_ERROR([Invalid target for configuring PhantomOS $host])
         ;;
 esac
 
 AC_ARG_VAR([RUST_TARGET_PATH])
 
+export RUST_TARGET_PATH
+
 if test "$RUST_TARGET_PATH" \= ""
 then
-    RUST_TARGET_PATH="$ac_abssrcdir/targets"
+    RUST_TARGET_PATH="`realpath $srcdir`/targets"
 fi
+
+AC_MSG_CHECKING([where to find the target file for $host])
+AC_MSG_RESULT([$RUST_TARGET_PATH])
 
 LCRUST_PROG_RUSTC
 
@@ -35,41 +40,57 @@ AC_ARG_VAR([ASFLAGS])
 AC_ARG_VAR([MAKE])
 AC_PATH_PROGS([MAKE],[gmake lc-make make])
 
+
+
 if test x$rustc_is_lccc \= xyes
 then
     libsrc=`$RUSTC $RUSTFLAGS -Z extra-prints --print rust-libsrc`
     AS_MKDIR_P([build-std-build/build])
     
-    $(RUSTFLAGS) $(RUSTC) $(CC) $(libsrc)/configure --bindir=`pwd`/build-std-build/build --with-rustlibdir=`pwd`/build-std-build/ --enable-libraries=core,alloc 
+    RUSTFLAGS=$(RUSTFLAGS) RUSTC=$(RUSTC) CC=$(CC) $(libsrc)/configure --host=$(host) --bindir=`pwd`/build-std-build/build --with-rustlibdir=`pwd`/build-std-build/ --enable-libraries=core,alloc 
     $(MAKE) -C build-std-build/ all 
     $(MAKE) -C build-std-build/ install
+    RUSTFLAGS="-L build-std-build/"
 else
+    if test -d build-std-build/ -a -f build-std-build/rustc-version
+    then
+        if test "`$RUSTC -V`" \= "`cat build-std-build/rustc-version`"
+        then
+            _skip_std_build=yes
+        fi
+    fi
+    if test x$_skip_std_build != xyes
+    then
     AC_ARG_VAR([CARGO])
     AC_PATH_PROG([CARGO],[cargo])
-    mkdir build-std-src
-    echo > build-std-src/Cargo.toml << "EOF"
-[package]
+    CARGO_RUSTFLAGS="`sed -e 's/--target [[[:graph:]]]*//'<<<"$RUSTFLAGS"`"
+    mkdir -p build-std-src
+    cat > build-std-src/Cargo.toml << "EOF"
+[[package]]
 name = "dummy"
 version = "0.1.0"
-edition = "2021"
+edition = "2018"
+[[workspace]]
 EOF
-    mkdir build-std-src/build
-    mkdir build-std-src/src
+    mkdir -p build-std-src/build
+    mkdir -p build-std-src/src
     echo '#![no_std]' > build-std-src/src/lib.rs
-    echo "$CARGO build --target $rustc_host_target --target-dir build-std-src/build --manifest-path build-std-src/ --release -Z build-std=core,alloc" > config.log
-    RUSTFLAGS="$RUSTFLAGS" RUSTC="$RUSTC" $CARGO build --target $rustc_host_target --target-dir build-std-src/build --manifest-path build-std-src/ --release -Z build-std=core,alloc > /dev/null 2>> config.log
+    echo "$CARGO build --target $rustc_host_target --target-dir build-std-src/build --manifest-path build-std-src/ --release -Z build-std=core,alloc" >> config.log
+    RUST_TARGET_PATH="$RUST_TARGET_PATH"  RUSTFLAGS="$CARGO_RUSTFLAGS" RUSTC="$RUSTC" $CARGO build --target $rustc_host_target --target-dir build-std-src/build --manifest-path build-std-src/Cargo.toml --release -Z build-std=core,alloc > /dev/null 2>> config.log
     if  test $? -ne 0
     then
         AC_MSG_ERROR([Failed to build the standard library for $RUSTC])
     fi
-    mkdir build-std-build
+    mkdir -p build-std-build 2>&1 > /dev/null
 
-    for lib in core alloc compiler_builtins
+    for lib in core alloc compiler_builtins rustc_std_workspace_core
     do
-        cp build-std-src/build/x86_64-pc-phantom-kernel/deps/lib${lib}-*.rlib build-std-build/lib${lib}.rlib
+        cp build-std-src/build/$rustc_host_target/release/deps/lib${lib}-*.rlib build-std-build/lib${lib}.rlib
     done
     rm -rf build-std-src
-    RUSTFLAGS="--extern \"core=$PWD/build-std-build/libcore.rlib --extern \"noprelude:alloc=$PWD/build-std-build/liballoc.rlib\" --extern \"noprelude:compiler_builtins=$PWD/build-std-build/libcompiler_builtins.rlib\""
+    echo -n "`$RUSTC -V`" > build-std-build/rustc-version
+    fi
+    RUSTFLAGS="$RUSTFLAGS --extern \"core=$PWD/build-std-build/libcore.rlib\" -L \"$PWD/build-std-build\""
 fi
 
 
@@ -129,7 +150,10 @@ AC_ARG_WITH([kernel-name],[the filename of the kernel to run],[
     kernel_name="phantom-kernel.so"
 ])
 
-AC_SUBST([base_dirs search_paths kernel_name])
+AC_SUBST([base_dirs])
+AC_SUBST([search_paths])
+AC_SUBST([kernel_name])
+AC_SUBST([RUST_TARGET_PATH])
 
 AC_CONFIG_FILES([Makefile])
 

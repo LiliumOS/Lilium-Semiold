@@ -39,7 +39,7 @@ AC_DEFUN([_LCRUST_FIND_RUST_TARGET],[
             then
                 echo Trying target $_target >> config.log
                 echo "$_RUSTC $_RUSTFLAGS --target $_target --print sysroot" >> config.log
-                $_RUSTC $_RUSTFLAGS --target $_target 2>> config.log > /dev/null
+                RUST_TARGET_PATH="$RUST_TARGET_PATH" $_RUSTC $_RUSTFLAGS --target $_target 2>> config.log > /dev/null
                 if test $? -eq 0
                 then
                     rust_target=$_target
@@ -52,7 +52,7 @@ AC_DEFUN([_LCRUST_FIND_RUST_TARGET],[
                     IFS="-" read _target_arch _rest <<< "$_target"
                     echo Trying target $_target_arch-pc-windows-gnu >> config.log
                     echo "$_RUSTC $_RUSTFLAGS --target $_target_arch-pc-windows-gnu --print sysroot" >> config.log
-                    $_RUSTC $_RUSTFLAGS --target $_target_arch-pc-windows-gnu --print sysroot 2>> config.log > /dev/null
+                    RUST_TARGET_PATH="$RUST_TARGET_PATH" $_RUSTC $_RUSTFLAGS --target $_target_arch-pc-windows-gnu --print sysroot 2>> config.log > /dev/null
                     if test $? -eq 0
                     then
                         rust_target=$_target_arch-pc-windows-gnu
@@ -63,7 +63,7 @@ AC_DEFUN([_LCRUST_FIND_RUST_TARGET],[
                     IFS="-" read _target_arch _target_vendor _target_sys <<< "$_target"
                     echo Trying target $_target_arch-pc-$_target_sys >> config.log
                     echo "$_RUSTC $_RUSTFLAGS --target $_target_arch-pc-$_target_sys --print sysroot" >> config.log
-                    $_RUSTC $_RUSTFLAGS --target $_target_arch-pc-$_target_sys --print sysroot 2>> config.log > /dev/null
+                    RUST_TARGET_PATH="$RUST_TARGET_PATH" $_RUSTC $_RUSTFLAGS --target $_target_arch-pc-$_target_sys --print sysroot 2>> config.log > /dev/null
                     if test $? -eq 0
                     then
                         rust_target=$_target_arch-pc-$_target_sys
@@ -76,7 +76,7 @@ AC_DEFUN([_LCRUST_FIND_RUST_TARGET],[
                 IFS="-" read _target_arch _target_vendor _target_sys <<< "$_target"
                 echo Trying target $_target_arch-unknown-$_target_sys >> config.log
                 echo "$_RUSTC $_RUSTFLAGS --target $_target_arch-unknown-$_target_sys --print sysroot" >> config.log
-                $_RUSTC $_RUSTFLAGS --target $_target_arch-unknown-$_target_sys --print sysroot 2>> config.log >> /dev/null
+                RUST_TARGET_PATH="$RUST_TARGET_PATH" $_RUSTC $_RUSTFLAGS --target $_target_arch-unknown-$_target_sys --print sysroot 2>> config.log >> /dev/null
                 if test $? -eq 0
                 then
                     rust_target=$_target_arch-unknown-$_target_sys
@@ -84,7 +84,7 @@ AC_DEFUN([_LCRUST_FIND_RUST_TARGET],[
                 else
                     echo Trying target $_target_arch-$_target_sys >> config.log
                     "$_RUSTC $_RUSTFLAGS --target $_target_arch-$_target_sys --print sysroot" >> config.log
-                    $_RUSTC $_RUSTFLAGS --target $_target_arch-$_target_sys --print sysroot 2>> config.log >> /dev/null
+                    RUST_TARGET_PATH="$RUST_TARGET_PATH" $_RUSTC $_RUSTFLAGS --target $_target_arch-$_target_sys --print sysroot 2>> config.log >> /dev/null
                     if test $? -eq 0
                     then
                         rust_target=$_target_arch-$_target_sys
@@ -103,11 +103,11 @@ AC_DEFUN([_LCRUST_FILENAMES],[
 
     touch comptest.rs
     echo "$_RUSTC $_RUSTFLAGS --crate-type bin,rlib,dylib,staticlib,cdylib --print file-names" >> config.log
-    _binname=$($RUSTC $RUSTFLAGS --crate-type bin --crate-name comptest --print file-names comptest.rs 2>> config.log)
-    _rlibname=$($RUSTC $RUSTFLAGS --crate-type rlib --crate-name comptest --print file-names comptest.rs 2>> config.log)
-    _dylibname=$($RUSTC $RUSTFLAGS --crate-type dylib --crate-name comptest --print file-names comptest.rs 2>> config.log)
-    _staticlibname=$($RUSTC $RUSTFLAGS --crate-type staticlib --crate-name comptest --print file-names comptest.rs 2>> config.log)
-    _cdylibname=$($RUSTC $RUSTFLAGS --crate-type cdylib --crate-name comptest --print file-names comptest.rs 2>> config.log)
+    _binname=$(RUST_TARGET_PATH="$RUST_TARGET_PATH" $RUSTC $RUSTFLAGS --crate-type bin --crate-name comptest --print file-names comptest.rs 2>> config.log)
+    _rlibname=$(RUST_TARGET_PATH="$RUST_TARGET_PATH" $RUSTC $RUSTFLAGS --crate-type rlib --crate-name comptest --print file-names comptest.rs 2>> config.log)
+    _dylibname=$(RUST_TARGET_PATH="$RUST_TARGET_PATH" $RUSTC $RUSTFLAGS --crate-type dylib --crate-name comptest --print file-names comptest.rs 2>> config.log)
+    _staticlibname=$(RUST_TARGET_PATH="$RUST_TARGET_PATH" $RUSTC $RUSTFLAGS --crate-type staticlib --crate-name comptest --print file-names comptest.rs 2>> config.log)
+    _cdylibname=$(RUST_TARGET_PATH="$RUST_TARGET_PATH" $RUSTC $RUSTFLAGS --crate-type cdylib --crate-name comptest --print file-names comptest.rs 2>> config.log)
 
     rust_bin_prefix=$(echo $_binname | sed 's/\(.*\)comptest\(.*\)/\1/')
     rust_bin_suffix=$(echo $_binname | sed 's/\(.*\)comptest\(.*\)/\2/')
@@ -151,7 +151,7 @@ AC_DEFUN([LCRUST_PROG_RUSTC],[
     AC_MSG_CHECKING([What style of arguments $RUSTC Accepts])
 
     echo "$RUSTC -C opt-level=0" >> config.log
-    $RUSTC -C opt-level=0 2>> config.log >/dev/null
+    RUST_TARGET_PATH="$RUST_TARGET_PATH" $RUSTC -C opt-level=0 --print cfg 2>> config.log >/dev/null
 
     if test $? -eq 0
     then
@@ -184,32 +184,32 @@ AC_DEFUN([LCRUST_PROG_RUSTC],[
 
     _LCRUST_FILENAMES([$RUSTC],[$RUSTFLAGS])
 
-    echo 'fn main(){}' > comptest.rs
-    AC_MSG_CHECKING([whether $RUSTC works])
-    echo "$RUSTC $RUSTFLAGS --crate-type bin --crate-name comptest --emit link=${rust_bin_prefix}comptest${rust_bin_suffix} comptest.rs" >> config.log
+    # echo 'fn main(){}' > comptest.rs
+    # AC_MSG_CHECKING([whether $RUSTC works])
+    # echo "$RUSTC $RUSTFLAGS --crate-type bin --crate-name comptest --emit link=${rust_bin_prefix}comptest${rust_bin_suffix} comptest.rs" >> config.log
 
-    $RUSTC $RUSTFLAGS --crate-type bin --crate-name comptest --emit link=${rust_bin_prefix}comptest${rust_bin_suffix} comptest.rs 2>>config.log >/dev/null
+    # $RUSTC $RUSTFLAGS --crate-type bin --crate-name comptest --emit link=${rust_bin_prefix}comptest${rust_bin_suffix} comptest.rs 2>>config.log >/dev/null
 
-    if test $? -ne 0
-    then
-        echo "#![no_std]" > comptest.rs
-        echo "$RUSTC $RUSTFLAGS --crate-type rlib --crate-name comptest --emit link=${rust_rlib_prefix}comptest${rust_rlib_suffix} comptest.rs" >> config.log
-        $RUSTC $RUSTFLAGS --crate-type rlib --crate-name comptest --emit link=${rust_rlib_prefix}comptest${rust_rlib_suffix} comptest.rs 2>>config.log >/dev/null
+    # if test $? -ne 0
+    # then
+    #     echo "#![no_std]" > comptest.rs
+    #     echo "$RUSTC $RUSTFLAGS --crate-type rlib --crate-name comptest --emit link=${rust_rlib_prefix}comptest${rust_rlib_suffix} comptest.rs" >> config.log
+    #     $RUSTC $RUSTFLAGS --crate-type rlib --crate-name comptest --emit link=${rust_rlib_prefix}comptest${rust_rlib_suffix} comptest.rs 2>>config.log >/dev/null
 
-        if $? -ne 0
-        then
-            AC_MSG_RESULT([no])
-            AC_MSG_ERROR([Cannot compile simple test program with $RUSTC])
-        else
-            AC_MSG_RESULT([no_std only])
-            rustc_has_std=no
-        fi
-    else
-        AC_MSG_RESULT([yes])
-        rustc_has_std=yes
-    fi
+    #     if test $? -ne 0
+    #     then
+    #         AC_MSG_RESULT([no])
+    #         AC_MSG_ERROR([Cannot compile simple test program with $RUSTC])
+    #     else
+    #         AC_MSG_RESULT([no_std only])
+    #         rustc_has_std=no
+    #     fi
+    # else
+    #     AC_MSG_RESULT([yes])
+    #     rustc_has_std=yes
+    # fi
 
-    if x$cross_compiling \= xno
+    if test x$cross_compiling \= xno
     then
         ./${rust_bin_prefix}comptest${rust_bin_suffix}
         if test $? -ne 0
@@ -421,7 +421,7 @@ AC_DEFUN([LCRUST_RUSTC_VERSION_FOR_BUILD],[
 
 AC_DEFUN([LCRUST_TRY_COMPILE],[
     echo ["$1"] >> test.rs
-    ${RUSTC} ${RUSTFLAGS} --crate-type rlib --crate-name test --emit link=libtest.rlib test.rs
+    RUST_TARGET_PATH="$RUST_TARGET_PATH" ${RUSTC} ${RUSTFLAGS} --crate-type rlib --crate-name test --emit link=libtest.rlib test.rs
 
     if test $? -eq 0 
     then
