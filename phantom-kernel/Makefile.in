@@ -1,0 +1,56 @@
+
+srcdir = @srcdir@
+builddir = @builddir@
+
+RUSTC = @RUSTC@
+RUSTFLAGS = @RUSTFLAGS@
+CC = @CC@
+CFLAGS = @CFLAGS@
+
+INSTALL = @INSTALL@
+
+RUST_TARGET_PATH = @RUST_TARGET_PATH@
+
+prefix = @prefix@
+includedir = @libdir@
+
+bootdir = @bootdir@
+kernel_libdir = @kernel_libdir@
+
+rust_bin_prefix=@rust_bin_prefix@
+rust_bin_suffix=@rust_bin_suffix@
+rust_rlib_prefix=@rust_rlib_prefix@
+rust_rlib_suffix=@rust_rlib_suffix@
+rust_staticlib_prefix=@rust_staticlib_prefix@
+rust_staticlib_suffix=@rust_staticlib_suffix@
+rust_dylib_prefix=@rust_dylib_prefix@
+rust_dylib_suffix=@rust_dylib_suffix@
+rust_cdylib_prefix=@rust_cdylib_prefix@
+rust_cdylib_suffix=@rust_cdylib_suffix@
+
+
+
+phantom_panic_halt_DIR = ../phantom-panic-halt
+phantom_panic_halt_FILE = $(_DIR)/$(rust_rlib_prefix)phantom_panic_halt$(rust_rlib_suffix)
+
+phantom_fs_drivers_DIR = ../phantom-fs-drivers
+phantom_fs_drivers_FILE = $(_DIR)/$(rust_cdylib_prefix)phantom_fs_drivers$(rust_cdylib_suffix)
+
+
+
+all: stamp
+
+
+$(rust_cdylib_prefix)phantom_kernel$(rust_cdylib_suffix).d: $(foreach dep,,$($(dep)_DIR)/stamp)
+    $(RUSTC) $(RUSTFLAGS) --crate-name phantom_kernel --crate-type cdylib --extern "phantom_panic_halt=$(phantom_panic_halt_FILE)" --extern "phantom_fs_drivers=$(phantom_fs_drivers_FILE)"  --emit dep-info=$@ -o $(rust_cdylib_prefix)phantom_kernel$(rust_cdylib_suffix)
+
+include $(rust_cdylib_prefix)phantom_kernel$(rust_cdylib_suffix).d
+
+$(rust_cdylib_prefix)phantom_kernel$(rust_cdylib_suffix): $(foreach dep,,$($(dep)_DIR)/stamp)
+    $(RUSTC) $(RUSTFLAGS) --crate-name phantom_kernel --crate-type cdylib --extern "phantom_panic_halt=$(phantom_panic_halt_FILE)" --extern "phantom_fs_drivers=$(phantom_fs_drivers_FILE)"  --emit link=$@ -o $@
+
+stamp: $(rust_cdylib_prefix)phantom_kernel$(rust_cdylib_suffix)
+
+
+stamp:
+    touch stamp

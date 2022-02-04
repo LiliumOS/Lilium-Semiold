@@ -1,2 +1,2 @@
 [workspace]
-members = ["phantom-loader","phantom-panic-halt","phantom-kernel"]
+members = ["phantom-loader","phantom-panic-halt","phantom-kernel","phantom-fs-drivers"]

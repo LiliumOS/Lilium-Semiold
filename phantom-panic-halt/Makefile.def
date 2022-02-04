@@ -1,0 +1,5 @@
+#! /usr/bin/autogen
+AutoGen definitions Makefile.tpl;
+
+
+outputs={crate_name="phantom_panic_halt";crate_type="rlib";};

@@ -1,8 +1,7 @@
-AC_INIT([install-sh])
+AC_INIT([Cargo.toml])
 
 
-
-AC_CONFIG_MACRO_DIRS([m4/])
+AC_CONFIG_MACRO_DIRS([../m4/])
 
 AC_CANONICAL_BUILD
 AC_CANONICAL_HOST
@@ -46,62 +45,6 @@ AC_PROG_INSTALL
 AC_PROG_MKDIR_P
 
 AC_ARG_VAR([ASFLAGS])
-
-AC_ARG_VAR([MAKE])
-AC_PATH_PROGS([MAKE],[gmake lc-make make])
-
-
-
-if test x$rustc_is_lccc \= xyes
-then
-    libsrc=`$RUSTC $RUSTFLAGS -Z extra-prints --print rust-libsrc`
-    AS_MKDIR_P([build-std-build/build])
-    
-    RUSTFLAGS=$(RUSTFLAGS) RUSTC=$(RUSTC) CC=$(CC) $(libsrc)/configure --host=$(host) --bindir=`pwd`/build-std-build/build --with-rustlibdir=`pwd`/build-std-build/ --enable-libraries=core,alloc 
-    $(MAKE) -C build-std-build/ all 
-    $(MAKE) -C build-std-build/ install
-    RUSTFLAGS="-L build-std-build/"
-else
-    if test -d build-std-build/ -a -f build-std-build/rustc-version
-    then
-        if test "`$RUSTC -V`" \= "`cat build-std-build/rustc-version`"
-        then
-            _skip_std_build=yes
-        fi
-    fi
-    if test x$_skip_std_build != xyes
-    then
-    AC_ARG_VAR([CARGO])
-    AC_PATH_PROG([CARGO],[cargo])
-    CARGO_RUSTFLAGS="`sed -e 's/--target [[[:graph:]]]*//'<<<"$RUSTFLAGS"`"
-    mkdir -p build-std-src
-    cat > build-std-src/Cargo.toml << "EOF"
-[[package]]
-name = "dummy"
-version = "0.1.0"
-edition = "2018"
-[[workspace]]
-EOF
-    mkdir -p build-std-src/build
-    mkdir -p build-std-src/src
-    echo '#![no_std]' > build-std-src/src/lib.rs
-    echo "$CARGO build --target $rustc_host_target --target-dir build-std-src/build --manifest-path build-std-src/ --release -Z build-std=core,alloc" >> config.log
-    RUST_TARGET_PATH="$RUST_TARGET_PATH"  RUSTFLAGS="$CARGO_RUSTFLAGS" RUSTC="$RUSTC" $CARGO build --target $rustc_host_target --target-dir build-std-src/build --manifest-path build-std-src/Cargo.toml --release -Z build-std=core,alloc > /dev/null 2>> config.log
-    if  test $? -ne 0
-    then
-        AC_MSG_ERROR([Failed to build the standard library for $RUSTC])
-    fi
-    mkdir -p build-std-build 2>&1 > /dev/null
-
-    for lib in core alloc compiler_builtins rustc_std_workspace_core
-    do
-        cp build-std-src/build/$rustc_host_target/release/deps/lib${lib}-*.rlib build-std-build/lib${lib}.rlib
-    done
-    rm -rf build-std-src
-    echo -n "`$RUSTC -V`" > build-std-build/rustc-version
-    fi
-    RUSTFLAGS="$RUSTFLAGS --extern \"core=$PWD/build-std-build/libcore.rlib\" -L \"$PWD/build-std-build\""
-fi
 
 
 AC_ARG_WITH([bootdir],[Sets the directory to install boot artifacts into],[
@@ -163,7 +106,7 @@ AC_ARG_WITH([kernel-lib-search],[the directories the loader searches for librari
 AC_ARG_WITH([kernel-libdir],[the directory to install kernel libraries and modules into],[
     kernel_libdir="$withval"
 ],[
-    kernel_libdir='${bootdir}/system/lib'
+    kernel_libdir='$bootdir/system/lib'
 ])
 
 AC_ARG_WITH([kernel-name],[the filename of the kernel to run],[
@@ -174,7 +117,6 @@ AC_ARG_WITH([kernel-name],[the filename of the kernel to run],[
 
 AC_SUBST([kernel_libdir])
 AC_SUBST([kernel_lib_search])
-AC_SUBST([bootdir])
 AC_SUBST([base_dirs])
 AC_SUBST([search_paths])
 AC_SUBST([kernel_name])

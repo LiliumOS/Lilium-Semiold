@@ -27,7 +27,7 @@ AC_DEFUN([_LCRUST_FIND_RUST_TARGET],[
             then
                 echo Trying target $_target_alias >> config.log
                 echo "$_RUSTC $_RUSTFLAGS --target $_target_alias --print sysroot" >> config.log
-                $_RUSTC $_RUSTFLAGS --target $_target_alias 2>> config.log > /dev/null
+                RUST_TARGET_PATH="$RUST_TARGET_PATH" $_RUSTC $_RUSTFLAGS --target $_target_alias 2>> config.log > /dev/null
                 if test $? -eq 0
                 then
                     rust_target=$_target_alias
@@ -83,7 +83,7 @@ AC_DEFUN([_LCRUST_FIND_RUST_TARGET],[
                     $5
                 else
                     echo Trying target $_target_arch-$_target_sys >> config.log
-                    "$_RUSTC $_RUSTFLAGS --target $_target_arch-$_target_sys --print sysroot" >> config.log
+                    echo "$_RUSTC $_RUSTFLAGS --target $_target_arch-$_target_sys --print sysroot" >> config.log
                     RUST_TARGET_PATH="$RUST_TARGET_PATH" $_RUSTC $_RUSTFLAGS --target $_target_arch-$_target_sys --print sysroot 2>> config.log >> /dev/null
                     if test $? -eq 0
                     then

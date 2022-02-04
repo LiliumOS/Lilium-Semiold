@@ -1,0 +1,8 @@
+
+stamp: asm/stamp
+
+asm/stamp: 
+	make -C asm/ all
+
+
+	

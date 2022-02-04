@@ -1,0 +1,9 @@
+#! /usr/bin/autogen
+AutoGen definitions Makefile.tpl;
+
+deps={dep_name="phantom_panic_halt";dir="../phantom-panic-halt";crate_type="rlib";};
+deps={dep_name="phantom_fs_drivers";dir="../phantom-fs-drivers";crate_type="rlib";};
+
+outputs={crate_name="phantom_loader";crate_type="staticlib";};
+
+nextrules={makefile="asm.mk";};

@@ -581,17 +581,14 @@ PACKAGE_STRING=
 PACKAGE_BUGREPORT=
 PACKAGE_URL=
 
-ac_unique_file="install-sh"
+ac_unique_file="Cargo.toml"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 kernel_name
 search_paths
 base_dirs
-bootdir
 kernel_lib_search
 kernel_libdir
-CARGO
-MAKE
 ASFLAGS
 MKDIR_P
 INSTALL_DATA
@@ -692,9 +689,7 @@ LIBS
 CPPFLAGS
 RUSTC
 RUSTFLAGS
-ASFLAGS
-MAKE
-CARGO'
+ASFLAGS'
 
 
 # Initialize some variables set by options.
@@ -1336,8 +1331,6 @@ Some influential environment variables:
   RUSTC       Rust compiler to use
   RUSTFLAGS   Flags to pass to the rust compiler
   ASFLAGS
-  MAKE
-  CARGO
 
 Use these variables to override the choices made by `configure' or to help
 it to find libraries and programs with nonstandard names/locations.
@@ -1806,7 +1799,6 @@ ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
-
 
 
 
@@ -3808,145 +3800,6 @@ $as_echo "$MKDIR_P" >&6; }
 
 
 
-for ac_prog in gmake lc-make make
-do
-  # Extract the first word of "$ac_prog", so it can be a program name with args.
-set dummy $ac_prog; ac_word=$2
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
-$as_echo_n "checking for $ac_word... " >&6; }
-if ${ac_cv_path_MAKE+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  case $MAKE in
-  [\\/]* | ?:[\\/]*)
-  ac_cv_path_MAKE="$MAKE" # Let the user override the test with a path.
-  ;;
-  *)
-  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
-for as_dir in $PATH
-do
-  IFS=$as_save_IFS
-  test -z "$as_dir" && as_dir=.
-    for ac_exec_ext in '' $ac_executable_extensions; do
-  if as_fn_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
-    ac_cv_path_MAKE="$as_dir/$ac_word$ac_exec_ext"
-    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
-    break 2
-  fi
-done
-  done
-IFS=$as_save_IFS
-
-  ;;
-esac
-fi
-MAKE=$ac_cv_path_MAKE
-if test -n "$MAKE"; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $MAKE" >&5
-$as_echo "$MAKE" >&6; }
-else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
-fi
-
-
-  test -n "$MAKE" && break
-done
-
-
-
-
-if test x$rustc_is_lccc \= xyes
-then
-    libsrc=`$RUSTC $RUSTFLAGS -Z extra-prints --print rust-libsrc`
-    as_dir=build-std-build/build; as_fn_mkdir_p
-
-    RUSTFLAGS=$(RUSTFLAGS) RUSTC=$(RUSTC) CC=$(CC) $(libsrc)/configure --host=$(host) --bindir=`pwd`/build-std-build/build --with-rustlibdir=`pwd`/build-std-build/ --enable-libraries=core,alloc
-    $(MAKE) -C build-std-build/ all
-    $(MAKE) -C build-std-build/ install
-    RUSTFLAGS="-L build-std-build/"
-else
-    if test -d build-std-build/ -a -f build-std-build/rustc-version
-    then
-        if test "`$RUSTC -V`" \= "`cat build-std-build/rustc-version`"
-        then
-            _skip_std_build=yes
-        fi
-    fi
-    if test x$_skip_std_build != xyes
-    then
-
-    # Extract the first word of "cargo", so it can be a program name with args.
-set dummy cargo; ac_word=$2
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
-$as_echo_n "checking for $ac_word... " >&6; }
-if ${ac_cv_path_CARGO+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  case $CARGO in
-  [\\/]* | ?:[\\/]*)
-  ac_cv_path_CARGO="$CARGO" # Let the user override the test with a path.
-  ;;
-  *)
-  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
-for as_dir in $PATH
-do
-  IFS=$as_save_IFS
-  test -z "$as_dir" && as_dir=.
-    for ac_exec_ext in '' $ac_executable_extensions; do
-  if as_fn_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
-    ac_cv_path_CARGO="$as_dir/$ac_word$ac_exec_ext"
-    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
-    break 2
-  fi
-done
-  done
-IFS=$as_save_IFS
-
-  ;;
-esac
-fi
-CARGO=$ac_cv_path_CARGO
-if test -n "$CARGO"; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $CARGO" >&5
-$as_echo "$CARGO" >&6; }
-else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
-fi
-
-
-    CARGO_RUSTFLAGS="`sed -e 's/--target [[:graph:]]*//'<<<"$RUSTFLAGS"`"
-    mkdir -p build-std-src
-    cat > build-std-src/Cargo.toml << "EOF"
-[package]
-name = "dummy"
-version = "0.1.0"
-edition = "2018"
-[workspace]
-EOF
-    mkdir -p build-std-src/build
-    mkdir -p build-std-src/src
-    echo '#![no_std]' > build-std-src/src/lib.rs
-    echo "$CARGO build --target $rustc_host_target --target-dir build-std-src/build --manifest-path build-std-src/ --release -Z build-std=core,alloc" >> config.log
-    RUST_TARGET_PATH="$RUST_TARGET_PATH"  RUSTFLAGS="$CARGO_RUSTFLAGS" RUSTC="$RUSTC" $CARGO build --target $rustc_host_target --target-dir build-std-src/build --manifest-path build-std-src/Cargo.toml --release -Z build-std=core,alloc > /dev/null 2>> config.log
-    if  test $? -ne 0
-    then
-        as_fn_error $? "Failed to build the standard library for $RUSTC" "$LINENO" 5
-    fi
-    mkdir -p build-std-build 2>&1 > /dev/null
-
-    for lib in core alloc compiler_builtins rustc_std_workspace_core
-    do
-        cp build-std-src/build/$rustc_host_target/release/deps/lib${lib}-*.rlib build-std-build/lib${lib}.rlib
-    done
-    rm -rf build-std-src
-    echo -n "`$RUSTC -V`" > build-std-build/rustc-version
-    fi
-    RUSTFLAGS="$RUSTFLAGS --extern \"core=$PWD/build-std-build/libcore.rlib\" -L \"$PWD/build-std-build\""
-fi
-
-
 
 # Check whether --with-bootdir was given.
 if test "${with_bootdir+set}" = set; then :
@@ -4039,7 +3892,7 @@ if test "${with_kernel_libdir+set}" = set; then :
 
 else
 
-    kernel_libdir='${bootdir}/system/lib'
+    kernel_libdir='$bootdir/system/lib'
 
 fi
 
@@ -4055,7 +3908,6 @@ else
     kernel_name="phantom-kernel.so"
 
 fi
-
 
 
 

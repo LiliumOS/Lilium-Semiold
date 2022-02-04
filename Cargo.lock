@@ -3,6 +3,13 @@
 version = 3
 
 [[package]]
+name = "phantom-fs-drivers"
+version = "0.1.0"
+dependencies = [
+ "phantom-panic-halt",
+]
+
+[[package]]
 name = "phantom-kernel"
 version = "0.1.0"
 dependencies = [

@@ -1,0 +1,7 @@
+#! /usr/bin/autogen
+AutoGen definitions Makefile.tpl;
+
+targets={target="phantom-panic-halt";};
+targets={target="phantom-fs-drivers";};
+targets={target="phantom-loader";};
+targets={target="phantom-kernel";};

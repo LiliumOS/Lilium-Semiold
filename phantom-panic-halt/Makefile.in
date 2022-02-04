@@ -1,0 +1,50 @@
+
+srcdir = @srcdir@
+builddir = @builddir@
+
+RUSTC = @RUSTC@
+RUSTFLAGS = @RUSTFLAGS@
+CC = @CC@
+CFLAGS = @CFLAGS@
+
+INSTALL = @INSTALL@
+
+RUST_TARGET_PATH = @RUST_TARGET_PATH@
+
+prefix = @prefix@
+includedir = @libdir@
+
+bootdir = @bootdir@
+kernel_libdir = @kernel_libdir@
+
+rust_bin_prefix=@rust_bin_prefix@
+rust_bin_suffix=@rust_bin_suffix@
+rust_rlib_prefix=@rust_rlib_prefix@
+rust_rlib_suffix=@rust_rlib_suffix@
+rust_staticlib_prefix=@rust_staticlib_prefix@
+rust_staticlib_suffix=@rust_staticlib_suffix@
+rust_dylib_prefix=@rust_dylib_prefix@
+rust_dylib_suffix=@rust_dylib_suffix@
+rust_cdylib_prefix=@rust_cdylib_prefix@
+rust_cdylib_suffix=@rust_cdylib_suffix@
+
+
+
+
+
+all: stamp
+
+
+$(rust_rlib_prefix)phantom_panic_halt$(rust_rlib_suffix).d: $(foreach dep,,$($(dep)_DIR)/stamp)
+    $(RUSTC) $(RUSTFLAGS) --crate-name phantom_panic_halt --crate-type rlib  --emit dep-info=$@ -o $(rust_rlib_prefix)phantom_panic_halt$(rust_rlib_suffix)
+
+include $(rust_rlib_prefix)phantom_panic_halt$(rust_rlib_suffix).d
+
+$(rust_rlib_prefix)phantom_panic_halt$(rust_rlib_suffix): $(foreach dep,,$($(dep)_DIR)/stamp)
+    $(RUSTC) $(RUSTFLAGS) --crate-name phantom_panic_halt --crate-type rlib  --emit link=$@ -o $@
+
+stamp: $(rust_rlib_prefix)phantom_panic_halt$(rust_rlib_suffix)
+
+
+stamp:
+    touch stamp
