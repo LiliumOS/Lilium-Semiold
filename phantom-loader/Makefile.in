@@ -41,30 +41,30 @@ phantom_fs_drivers_FILE = $(_DIR)/$(rust_rlib_prefix)phantom_fs_drivers$(rust_rl
 all: stamp
 
 Makefile: config.status
-    ./config.status Makefile 
-    
+	./config.status Makefile 
+	
 config.status: @srcdir@/configure
-    ./config.status --recheck
+	./config.status --recheck
 
 
 $(rust_staticlib_prefix)phantom_loader$(rust_staticlib_suffix).d: $(foreach dep,,$($(dep)_DIR)/stamp)
-    $(RUSTC) $(RUSTFLAGS) --crate-name phantom_loader --crate-type staticlib --extern "phantom_panic_halt=$(phantom_panic_halt_FILE)" --extern "phantom_fs_drivers=$(phantom_fs_drivers_FILE)"  --emit dep-info=$@ -o $(rust_staticlib_prefix)phantom_loader$(rust_staticlib_suffix)
+	$(RUSTC) $(RUSTFLAGS) --crate-name phantom_loader --crate-type staticlib --extern "phantom_panic_halt=$(phantom_panic_halt_FILE)" --extern "phantom_fs_drivers=$(phantom_fs_drivers_FILE)"  --emit dep-info=$@ -o $(rust_staticlib_prefix)phantom_loader$(rust_staticlib_suffix)
 
 include $(rust_staticlib_prefix)phantom_loader$(rust_staticlib_suffix).d
 
 $(rust_staticlib_prefix)phantom_loader$(rust_staticlib_suffix): $(foreach dep,,$($(dep)_DIR)/stamp) Makefile 
-    $(RUSTC) $(RUSTFLAGS) --crate-name phantom_loader --crate-type staticlib --extern "phantom_panic_halt=$(phantom_panic_halt_FILE)" --extern "phantom_fs_drivers=$(phantom_fs_drivers_FILE)"  --emit link=$@ -o $@
+	$(RUSTC) $(RUSTFLAGS) --crate-name phantom_loader --crate-type staticlib --extern "phantom_panic_halt=$(phantom_panic_halt_FILE)" --extern "phantom_fs_drivers=$(phantom_fs_drivers_FILE)"  --emit link=$@ -o $@
 stamp: $(rust_staticlib_prefix)phantom_loader$(rust_staticlib_suffix)
 
 
 
 
 asm.mk: config.status
-    ./config.status asm.mk
+	./config.status asm.mk
 
 
 include asm.mk
 
 
 stamp: 
-    touch stamp
+	touch stamp

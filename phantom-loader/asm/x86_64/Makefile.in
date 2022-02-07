@@ -1,0 +1,72 @@
+
+srcdir = @srcdir@
+builddir = @builddir@
+
+RUSTC = @RUSTC@
+RUSTFLAGS = @RUSTFLAGS@
+CC = @CC@
+CFLAGS = @CFLAGS@
+ASFLAGS = @ASFLAGS@
+LDFLAGS = @LDFLAGS@
+
+INSTALL = @INSTALL@
+
+OBJCOPY = @OBJCOPY@
+STRIP = @STRIP@
+
+RUST_TARGET_PATH = @RUST_TARGET_PATH@
+
+prefix = @prefix@
+includedir = @libdir@
+
+bootdir = @bootdir@
+kernel_libdir = @kernel_libdir@
+search_paths = @search_paths@
+base_dirs = @base_dirs@
+kernel_name = @kernel_name@
+
+MKDIR_P = @MKDIR_P@
+
+CARGO = @CARGO@
+
+CFLAGS = -I@top_srcdir@/include -I@top_srcdir@/@host_cpu@/include
+
+.PHONY: all
+
+all: stamp 
+
+Makefile: @top_builddir@/config.status @srcdir@/Makefile.in
+	@top_builddir@/config.status phantom-loader/asm/x86_64/Makefile
+
+stamp: phantom-image
+	touch stamp
+
+phantom-loader: loader.o memcpy.o interrupts.o $(loader_staticlib) | @top_srcdir@/ld/x86_64-pc-phantom-kernel.ld
+	$(CC) $(LDFLAGS) -nostdlib -T @top_srcdir@/ld/x86_64-pc-phantom-kernel.ld -o $@ -Wl,--start-group $^ -Wl,--end-group
+
+phantom-loader.dbg: phantom-loader
+	$(OBJCOPY) --only-keep-debug phantom-loader phantom-loader.dbg
+
+
+
+%.o.i386: $(srcdir)/%.c
+	$(CC) $(CFLAGS) -m32 -c $^ -o $@
+
+%.o.i386: $(srcdir)/%.S
+	$(CC) $(ASFLAGS) -m32 -c $^ -o $@
+
+loader-i386.o: @srcdir@/loader-i386.S 
+	$(CC) $(ASFLAGS) -m32 -c $^ -o $@
+
+%.o: $(srcdir)/%.c
+	$(CC) $(CFLAGS) -mno-red-zone -c $^ -o $@
+
+%.o: $(srcdir)/%.S
+	$(CC) $(ASFLAGS) -c $^ -o $@
+
+phantom-loader.o: phantom-loader | phantom-loader.dbg
+	$(STRIP) phantom-loader
+	$(OBJCOPY) -I binary -O elf32-i386 --rename-section .data=.data.img --redefine-sym _binary_phantom_loader_start=__head $^ $@
+
+phantom-image: phantom-loader.o loader-i386.o memcpy.o.i386 osimg.o.i386 | @srcdir@/i386-pc-phantom-loader.ld
+	$(CC) $(CFLAGS) -nostdlib -m32 -T @srcdir@/i386-pc-phantom-loader.ld -o $@ $^

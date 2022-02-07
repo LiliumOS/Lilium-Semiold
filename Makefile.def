@@ -1,6 +1,7 @@
 #! /usr/bin/autogen
 AutoGen definitions Makefile.tpl;
 
+targets={target="vendor/bitfla}
 targets={target="phantom-panic-halt";};
 targets={target="phantom-fs-drivers";};
 targets={target="phantom-loader";};

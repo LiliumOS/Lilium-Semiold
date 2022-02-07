@@ -11,10 +11,11 @@ AC_DEFUN([_LCRUST_FIND_RUST_TARGET],[
     _RUSTFLAGS="$2"
     _target="$3"
     _target_alias="$4"
+    rust_target=""
 
     case x$_RUSTC in
         x${host_alias}-* | x*[\\/]${host_alias}-* )
-            rustc_target=${host_alias}
+            rust_target=${host_alias}
             $6
             ;;
         x${host}-* | x*[\\/]${host}-* )
@@ -35,7 +36,7 @@ AC_DEFUN([_LCRUST_FIND_RUST_TARGET],[
                 fi
             fi
 
-            if test x$rust_target \= x
+            if test "$rust_target" \= ""
             then
                 echo Trying target $_target >> config.log
                 echo "$_RUSTC $_RUSTFLAGS --target $_target --print sysroot" >> config.log
@@ -47,31 +48,34 @@ AC_DEFUN([_LCRUST_FIND_RUST_TARGET],[
                 fi
             fi
 
-            case x$_target in
-                x*-*-mingw32 | x*-*-mingw32-* )
-                    IFS="-" read _target_arch _rest <<< "$_target"
-                    echo Trying target $_target_arch-pc-windows-gnu >> config.log
-                    echo "$_RUSTC $_RUSTFLAGS --target $_target_arch-pc-windows-gnu --print sysroot" >> config.log
-                    RUST_TARGET_PATH="$RUST_TARGET_PATH" $_RUSTC $_RUSTFLAGS --target $_target_arch-pc-windows-gnu --print sysroot 2>> config.log > /dev/null
-                    if test $? -eq 0
-                    then
-                        rust_target=$_target_arch-pc-windows-gnu
-                        $5
-                    fi
-                    ;;
-                xx86_64-*-* | xi?86-*-* )
-                    IFS="-" read _target_arch _target_vendor _target_sys <<< "$_target"
-                    echo Trying target $_target_arch-pc-$_target_sys >> config.log
-                    echo "$_RUSTC $_RUSTFLAGS --target $_target_arch-pc-$_target_sys --print sysroot" >> config.log
-                    RUST_TARGET_PATH="$RUST_TARGET_PATH" $_RUSTC $_RUSTFLAGS --target $_target_arch-pc-$_target_sys --print sysroot 2>> config.log > /dev/null
-                    if test $? -eq 0
-                    then
-                        rust_target=$_target_arch-pc-$_target_sys
-                        $5
-                    fi
-                    ;;
-            esac
-            if test x$rust_target \= x
+            if test "$rust_target" \= ""
+            then
+                case x$_target in
+                    x*-*-mingw32 | x*-*-mingw32-* )
+                        IFS="-" read _target_arch _rest <<< "$_target"
+                        echo Trying target $_target_arch-pc-windows-gnu >> config.log
+                        echo "$_RUSTC $_RUSTFLAGS --target $_target_arch-pc-windows-gnu --print sysroot" >> config.log
+                        RUST_TARGET_PATH="$RUST_TARGET_PATH" $_RUSTC $_RUSTFLAGS --target $_target_arch-pc-windows-gnu --print sysroot 2>> config.log > /dev/null
+                        if test $? -eq 0
+                        then
+                            rust_target=$_target_arch-pc-windows-gnu
+                            $5
+                        fi
+                        ;;
+                    xx86_64-*-* | xi?86-*-* )
+                        IFS="-" read _target_arch _target_vendor _target_sys <<< "$_target"
+                        echo Trying target $_target_arch-pc-$_target_sys >> config.log
+                        echo "$_RUSTC $_RUSTFLAGS --target $_target_arch-pc-$_target_sys --print sysroot" >> config.log
+                        RUST_TARGET_PATH="$RUST_TARGET_PATH" $_RUSTC $_RUSTFLAGS --target $_target_arch-pc-$_target_sys --print sysroot 2>> config.log > /dev/null
+                        if test $? -eq 0
+                        then
+                            rust_target=$_target_arch-pc-$_target_sys
+                            $5
+                        fi
+                        ;;
+                esac
+            fi
+            if test "$rust_target" \= ""
             then
                 IFS="-" read _target_arch _target_vendor _target_sys <<< "$_target"
                 echo Trying target $_target_arch-unknown-$_target_sys >> config.log
@@ -98,8 +102,8 @@ AC_DEFUN([_LCRUST_FIND_RUST_TARGET],[
 ])
 
 AC_DEFUN([_LCRUST_FILENAMES],[
-    _RUSTC=$1
-    _RUSTFLAGS=$2
+    _RUSTC="$1"
+    _RUSTFLAGS="$2"
 
     touch comptest.rs
     echo "$_RUSTC $_RUSTFLAGS --crate-type bin,rlib,dylib,staticlib,cdylib --print file-names" >> config.log
@@ -168,7 +172,6 @@ AC_DEFUN([LCRUST_PROG_RUSTC],[
     AC_MSG_CHECKING([how to compile for $host with $RUSTC])
     _LCRUST_FIND_RUST_TARGET([$RUSTC],[$RUSTFLAGS],[$host],[$host_alias],[
         rustc_host_target=$rust_target
-        RUSTFLAGS="$RUSTFLAGS --target $rustc_host_target"
         AC_MSG_RESULT([--target $rustc_host_target])
     ],[
         rustc_host_target=$rust_target
@@ -182,7 +185,7 @@ AC_DEFUN([LCRUST_PROG_RUSTC],[
         AC_MSG_ERROR([Cannot cross compile to $host with $RUSTC])
     fi
 
-    _LCRUST_FILENAMES([$RUSTC],[$RUSTFLAGS])
+    _LCRUST_FILENAMES([$RUSTC],[$RUSTFLAGS --target $rustc_host_target])
 
     # echo 'fn main(){}' > comptest.rs
     # AC_MSG_CHECKING([whether $RUSTC works])
@@ -217,7 +220,7 @@ AC_DEFUN([LCRUST_PROG_RUSTC],[
             AC_MSG_ERROR([Cannot run binaries produced by $RUSTC])
         fi
     fi
-    
+    AC_SUBST(rustc_host_target)
     AC_SUBST(rust_bin_prefix)
     AC_SUBST(rust_bin_suffix)
     AC_SUBST(rust_rlib_prefix)
@@ -297,16 +300,16 @@ AC_DEFUN([LCRUST_PROG_RUSTC_FOR_BUILD],[
     AC_MSG_NOTICE([checking for the compiler to use for $build... $RUSTC_FOR_BUILD])
 
    AC_MSG_CHECKING([how to compile for $build with $RUSTC_FOR_BUILD])
-   _LCRUST_FIND_RUST_TARGET([$RUSTC_FOR_BUILD],[$RUSTFLAGS_FOR_BUILD],[$host],[$host_alias],[
+   _LCRUST_FIND_RUST_TARGET([$RUSTC_FOR_BUILD],[$RUSTFLAGS_FOR_BUILD],[$build],[$build_alias],[
         rustc_build_target=$rust_target
-        RUSTFLAGS_FOR_BUILD="$RUSTFLAGS --target $rustc_build_target"
         AC_MSG_RESULT([--target $rustc_build_target])
     ],[
         rustc_build_target=$rust_target
         AC_MSG_RESULT([none needed])
     ])
 
-    if test x$rustc_host_target \= x
+
+    if test x$rustc_build_target \= x
     then
         AC_MSG_RESULT([not found])
         AC_MSG_ERROR([Cannot cross compile to $build with $RUSTC_FOR_BUILD])
@@ -322,7 +325,7 @@ AC_DEFUN([LCRUST_PROG_RUSTC_FOR_BUILD],[
     pushdef([rust_staticlib_suffix],rust_build_staticlib_suffix)
     pushdef([rust_cdylib_prefix],rust_build_cdylib_prefix)
     pushdef([rust_cdylib_suffix],rust_build_cdylib_suffix)
-    _LCRUST_FILENAMES([$RUSTC_FOR_BUILD],[$RUSTFLAGS_FOR_BUILD])
+    _LCRUST_FILENAMES([$RUSTC_FOR_BUILD],[$RUSTFLAGS_FOR_BUILD --target $rustc_build_target])
     AC_SUBST(rust_bin_prefix)
     AC_SUBST(rust_bin_suffix)
     AC_SUBST(rust_rlib_prefix)
@@ -348,29 +351,9 @@ AC_DEFUN([LCRUST_PROG_RUSTC_FOR_BUILD],[
     rust_build_proc_macro_prefix=$(echo $_proc_macroname | sed 's/\(.*\)comptest\(.*\)/\1/')
     rust_build_proc_macro_suffix=$(echo $_proc_macroname | sed 's/\(.*\)comptest\(.*\)/\2/')
 
-
-    AC_MSG_CHECKING([whether $RUSTC_FOR_BUILD works])
-    echo 'fn main(){}' > test.rs 
-    $RUSTC_FOR_BUILD $RUSTFLAGS_FOR_BUILD --crate-type bin --crate-name test test.rs 2>> config.log > /dev/null
-    if test $? -ne 0
-    then
-        AC_MSG_RESULT([no])
-        AC_MSG_ERROR([Cannot compile a simple program with $RUSTC_FOR_BUILD])
-    fi
-    
-    ./test${EXEEXT_FOR_BUILD}
-    if test $? -ne 0
-    then
-        AC_MSG_RESULT([no])
-        AC_MSG_ERROR([Cannot run executables compiled by $RUSTC_FOR_BUILD])
-    fi
-
-    rm -rf test.rs test${EXEEXT_FOR_BUILD}
-
-    AC_MSG_RESULT([yes])
-
     AC_SUBST(RUSTC_FOR_BUILD)
     AC_SUBST(RUSTFLAGS_FOR_BUILD)
+    AC_SUBST(rustc_build_target)
 ])
 
 AC_DEFUN([LCRUST_RUSTC_VERSION_FOR_BUILD],[

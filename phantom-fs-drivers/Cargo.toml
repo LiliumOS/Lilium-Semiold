@@ -7,6 +7,11 @@ edition = "2021"
 
 [dependencies]
 phantom-panic-halt = {path="../phantom-panic-halt"}
+phantom-dev = {path="../phantom-dev"}
+bytemuck = {version="1.7.3", features=["derive","min_const_generics"]}
+bitflags = {version="1.3.2"}
+fake-enum = {version="0.1"}
+
 
 [lib]
 crate-type = ["cdylib","rlib"]

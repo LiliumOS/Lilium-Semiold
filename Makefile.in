@@ -7,7 +7,13 @@ RUSTFLAGS = @RUSTFLAGS@
 CC = @CC@
 CFLAGS = @CFLAGS@
 
+RUSTC_FOR_BUILD = @RUSTC_FOR_BUILD@
+RUSTFLAGS_FOR_BUILD = @RUSTFLAGS_FOR_BUILD@
+
 INSTALL = @INSTALL@
+
+OBJCOPY = @OBJCOPY@
+STRIP = @STRIP@
 
 RUST_TARGET_PATH = @RUST_TARGET_PATH@
 
@@ -22,137 +28,55 @@ kernel_name = @kernel_name@
 
 MKDIR_P = @MKDIR_P@
 
+CARGO = @CARGO@
+
+rustc_build_target=@rustc_build_target@
+rustc_host_target=@rustc_host_target@
+
+rust_bin_prefix=@rust_bin_prefix@
+rust_bin_suffix=@rust_bin_suffix@
+rust_rlib_prefix=@rust_rlib_prefix@
+rust_rlib_suffix=@rust_rlib_suffix@
+rust_staticlib_prefix=@rust_staticlib_prefix@
+rust_staticlib_suffix=@rust_staticlib_suffix@
+rust_dylib_prefix=@rust_dylib_prefix@
+rust_dylib_suffix=@rust_dylib_suffix@
+rust_cdylib_prefix=@rust_cdylib_prefix@
+rust_cdylib_suffix=@rust_cdylib_suffix@
+
+cargo_builddir = cargo-build/$(rustc_host_target)/debug
+
+kernel_cdylib = $(cargo_builddir)/$(rust_cdylib_prefix)phantom_kernel$(rust_cdylib_suffix)
+loader_staticlib = $(cargo_builddir)/$(rust_staticlib_prefix)phantom_loader$(rust_staticlib_suffix)
+
+export RUSTC RUSTFLAGS CC CFLAGS RUST_TARGET_PATH bootdir kernel_libdir search_paths base_dirs kernel_name OBJCOPY STRIP RUSTC_FOR_BUILD RUSTFLAGS_FOR_BUILD
+
 # all
 
+all: 
+	+$(CARGO) build --target-dir $(builddir)/cargo-build --manifest-path $(srcdir)/Cargo.toml --target $(rustc_host_target)
+	+$(MAKE) stamp
 
-
-
-
-
-
-all: Makefile
+stamp: phantom-loader/asm/stamp $(kernel_name)
 	touch stamp
-	+$(MAKE)  CC="$(CC)" CFLAGS="$(CFLAGS)" RUSTC="$(RUSTC)" RUSTFLAGS="$(RUSTFLAGS)" prefix="$(prefix)" includedir="$(includedir)" kernel_libdir="$(kernel_libdir)" bootdir="$(bootdir)" RUST_TARGET_PATH="$(RUST_TARGET_PATH)"  phantom-panic-halt/all 
-	+$(MAKE)  CC="$(CC)" CFLAGS="$(CFLAGS)" RUSTC="$(RUSTC)" RUSTFLAGS="$(RUSTFLAGS)" prefix="$(prefix)" includedir="$(includedir)" kernel_libdir="$(kernel_libdir)" bootdir="$(bootdir)" RUST_TARGET_PATH="$(RUST_TARGET_PATH)"  phantom-fs-drivers/all 
-	+$(MAKE)  CC="$(CC)" CFLAGS="$(CFLAGS)" RUSTC="$(RUSTC)" RUSTFLAGS="$(RUSTFLAGS)" prefix="$(prefix)" includedir="$(includedir)" kernel_libdir="$(kernel_libdir)" bootdir="$(bootdir)" RUST_TARGET_PATH="$(RUST_TARGET_PATH)"  phantom-loader/all 
-	+$(MAKE)  CC="$(CC)" CFLAGS="$(CFLAGS)" RUSTC="$(RUSTC)" RUSTFLAGS="$(RUSTFLAGS)" prefix="$(prefix)" includedir="$(includedir)" kernel_libdir="$(kernel_libdir)" bootdir="$(bootdir)" RUST_TARGET_PATH="$(RUST_TARGET_PATH)"  phantom-kernel/all 
 
-
-
-Makefile: config.status
+Makefile: config.status @srcdir@/Makefile.in
 	./config.status Makefile
 
 config.status: @srcdir@/configure
 	./config.status --recheck
 
-clean:
-	+$(MAKE)  CC="$(CC)" CFLAGS="$(CFLAGS)" RUSTC="$(RUSTC)" RUSTFLAGS="$(RUSTFLAGS)" prefix="$(prefix)" includedir="$(includedir)" kernel_libdir="$(kernel_libdir)" bootdir="$(bootdir)" RUST_TARGET_PATH="$(RUST_TARGET_PATH)"  phantom-panic-halt/clean 
-	+$(MAKE)  CC="$(CC)" CFLAGS="$(CFLAGS)" RUSTC="$(RUSTC)" RUSTFLAGS="$(RUSTFLAGS)" prefix="$(prefix)" includedir="$(includedir)" kernel_libdir="$(kernel_libdir)" bootdir="$(bootdir)" RUST_TARGET_PATH="$(RUST_TARGET_PATH)"  phantom-fs-drivers/clean 
-	+$(MAKE)  CC="$(CC)" CFLAGS="$(CFLAGS)" RUSTC="$(RUSTC)" RUSTFLAGS="$(RUSTFLAGS)" prefix="$(prefix)" includedir="$(includedir)" kernel_libdir="$(kernel_libdir)" bootdir="$(bootdir)" RUST_TARGET_PATH="$(RUST_TARGET_PATH)"  phantom-loader/clean 
-	+$(MAKE)  CC="$(CC)" CFLAGS="$(CFLAGS)" RUSTC="$(RUSTC)" RUSTFLAGS="$(RUSTFLAGS)" prefix="$(prefix)" includedir="$(includedir)" kernel_libdir="$(kernel_libdir)" bootdir="$(bootdir)" RUST_TARGET_PATH="$(RUST_TARGET_PATH)"  phantom-kernel/clean 
+phantom-loader/asm.mk: config.status @srcdir@/phantom-loader/asm.mk.in
+	./config.status $@
 
+phantom-kernel.so: $(kernel_cdylib)
+	cp $(kernel_cdylib) phantom-kernel.so
 
-install:
-	+$(MAKE)  CC="$(CC)" CFLAGS="$(CFLAGS)" RUSTC="$(RUSTC)" RUSTFLAGS="$(RUSTFLAGS)" prefix="$(prefix)" includedir="$(includedir)" kernel_libdir="$(kernel_libdir)" bootdir="$(bootdir)" RUST_TARGET_PATH="$(RUST_TARGET_PATH)"  phantom-panic-halt/install 
-	+$(MAKE)  CC="$(CC)" CFLAGS="$(CFLAGS)" RUSTC="$(RUSTC)" RUSTFLAGS="$(RUSTFLAGS)" prefix="$(prefix)" includedir="$(includedir)" kernel_libdir="$(kernel_libdir)" bootdir="$(bootdir)" RUST_TARGET_PATH="$(RUST_TARGET_PATH)"  phantom-fs-drivers/install 
-	+$(MAKE)  CC="$(CC)" CFLAGS="$(CFLAGS)" RUSTC="$(RUSTC)" RUSTFLAGS="$(RUSTFLAGS)" prefix="$(prefix)" includedir="$(includedir)" kernel_libdir="$(kernel_libdir)" bootdir="$(bootdir)" RUST_TARGET_PATH="$(RUST_TARGET_PATH)"  phantom-loader/install 
-	+$(MAKE)  CC="$(CC)" CFLAGS="$(CFLAGS)" RUSTC="$(RUSTC)" RUSTFLAGS="$(RUSTFLAGS)" prefix="$(prefix)" includedir="$(includedir)" kernel_libdir="$(kernel_libdir)" bootdir="$(bootdir)" RUST_TARGET_PATH="$(RUST_TARGET_PATH)"  phantom-kernel/install 
+phantom-loader/asm/stamp: phantom-loader/asm.mk $(loader_staticlib)
+	+$(MAKE) -C phantom-loader -f asm.mk loader_staticlib=@abs_builddir@/$(loader_staticlib)
 
+dist: all ; export RUSTFLAGS=$(RUSTFLAGS_FOR_BUILD) RUSTC=$(RUSTC_FOR_BUILD) CC=@CC_FOR_BUILD@ CFLAGS=@CLAGS_FOR_BUILD@
+	+$(CARGO) build --target-dir $(builddir)/cargo-build --manifest-path=@srcdir@/dist/Cargo.toml --target $(rustc_build_target) -Z build-std=core,alloc,std
+	+$(MAKE) diststamp
 
-install-strip:
-	+$(MAKE)  CC="$(CC)" CFLAGS="$(CFLAGS)" RUSTC="$(RUSTC)" RUSTFLAGS="$(RUSTFLAGS)" prefix="$(prefix)" includedir="$(includedir)" kernel_libdir="$(kernel_libdir)" bootdir="$(bootdir)" RUST_TARGET_PATH="$(RUST_TARGET_PATH)"  phantom-panic-halt/install-strip 
-	+$(MAKE)  CC="$(CC)" CFLAGS="$(CFLAGS)" RUSTC="$(RUSTC)" RUSTFLAGS="$(RUSTFLAGS)" prefix="$(prefix)" includedir="$(includedir)" kernel_libdir="$(kernel_libdir)" bootdir="$(bootdir)" RUST_TARGET_PATH="$(RUST_TARGET_PATH)"  phantom-fs-drivers/install-strip 
-	+$(MAKE)  CC="$(CC)" CFLAGS="$(CFLAGS)" RUSTC="$(RUSTC)" RUSTFLAGS="$(RUSTFLAGS)" prefix="$(prefix)" includedir="$(includedir)" kernel_libdir="$(kernel_libdir)" bootdir="$(bootdir)" RUST_TARGET_PATH="$(RUST_TARGET_PATH)"  phantom-loader/install-strip 
-	+$(MAKE)  CC="$(CC)" CFLAGS="$(CFLAGS)" RUSTC="$(RUSTC)" RUSTFLAGS="$(RUSTFLAGS)" prefix="$(prefix)" includedir="$(includedir)" kernel_libdir="$(kernel_libdir)" bootdir="$(bootdir)" RUST_TARGET_PATH="$(RUST_TARGET_PATH)"  phantom-kernel/install-strip 
-
-
-# configure and build subdirs
-
-
-
-.PHONY: configure-phantom-panic-halt phantom-panic-halt/all phantom-panic-halt/install phantom-panic-halt/install-strip phantom-panic-halt/clean
-
-configure-phantom-panic-halt:
-	$(MKDIR_P) phantom-panic-halt
-	cd phantom-panic-halt && ../$(srcdir)/phantom-panic-halt/configure  CC="$(CC)" CFLAGS="$(CFLAGS)" RUSTC="$(RUSTC)" RUSTFLAGS="$(RUSTFLAGS)" prefix="$(prefix)" includedir="$(includedir)" kernel_libdir="$(kernel_libdir)" bootdir="$(bootdir)" RUST_TARGET_PATH="$(RUST_TARGET_PATH)"  -prefix=$(prefix) --includedir=$(includedir) --with-kernel-libdir=$(kernel_libdir) --with-bootdir=$(bootdir) --build=@build@ --host=@host@
-
-phantom-panic-halt/: 
-	+$(MAKE)  CC="$(CC)" CFLAGS="$(CFLAGS)" RUSTC="$(RUSTC)" RUSTFLAGS="$(RUSTFLAGS)" prefix="$(prefix)" includedir="$(includedir)" kernel_libdir="$(kernel_libdir)" bootdir="$(bootdir)" RUST_TARGET_PATH="$(RUST_TARGET_PATH)"  configure-phantom-panic-halt
-
-phantom-panic-halt/all: phantom-panic-halt/
-	+$(MAKE)  CC="$(CC)" CFLAGS="$(CFLAGS)" RUSTC="$(RUSTC)" RUSTFLAGS="$(RUSTFLAGS)" prefix="$(prefix)" includedir="$(includedir)" kernel_libdir="$(kernel_libdir)" bootdir="$(bootdir)" RUST_TARGET_PATH="$(RUST_TARGET_PATH)"  -C phantom-panic-halt all
-
-phantom-panic-halt/install: phantom-panic-halt/
-	+$(MAKE)  CC="$(CC)" CFLAGS="$(CFLAGS)" RUSTC="$(RUSTC)" RUSTFLAGS="$(RUSTFLAGS)" prefix="$(prefix)" includedir="$(includedir)" kernel_libdir="$(kernel_libdir)" bootdir="$(bootdir)" RUST_TARGET_PATH="$(RUST_TARGET_PATH)"  -C phantom-panic-halt install
-
-phantom-panic-halt/install-strip: phantom-panic-halt/
-	+$(MAKE)  CC="$(CC)" CFLAGS="$(CFLAGS)" RUSTC="$(RUSTC)" RUSTFLAGS="$(RUSTFLAGS)" prefix="$(prefix)" includedir="$(includedir)" kernel_libdir="$(kernel_libdir)" bootdir="$(bootdir)" RUST_TARGET_PATH="$(RUST_TARGET_PATH)"  -C phantom-panic-halt install-strip
-
-phantom-panic-halt/clean: phantom-panic-halt/
-	+$(MAKE)  CC="$(CC)" CFLAGS="$(CFLAGS)" RUSTC="$(RUSTC)" RUSTFLAGS="$(RUSTFLAGS)" prefix="$(prefix)" includedir="$(includedir)" kernel_libdir="$(kernel_libdir)" bootdir="$(bootdir)" RUST_TARGET_PATH="$(RUST_TARGET_PATH)"  -C phantom-panic-halt clean
-
-
-.PHONY: configure-phantom-fs-drivers phantom-fs-drivers/all phantom-fs-drivers/install phantom-fs-drivers/install-strip phantom-fs-drivers/clean
-
-configure-phantom-fs-drivers:
-	$(MKDIR_P) phantom-fs-drivers
-	cd phantom-fs-drivers && ../$(srcdir)/phantom-fs-drivers/configure  CC="$(CC)" CFLAGS="$(CFLAGS)" RUSTC="$(RUSTC)" RUSTFLAGS="$(RUSTFLAGS)" prefix="$(prefix)" includedir="$(includedir)" kernel_libdir="$(kernel_libdir)" bootdir="$(bootdir)" RUST_TARGET_PATH="$(RUST_TARGET_PATH)"  -prefix=$(prefix) --includedir=$(includedir) --with-kernel-libdir=$(kernel_libdir) --with-bootdir=$(bootdir) --build=@build@ --host=@host@
-
-phantom-fs-drivers/: 
-	+$(MAKE)  CC="$(CC)" CFLAGS="$(CFLAGS)" RUSTC="$(RUSTC)" RUSTFLAGS="$(RUSTFLAGS)" prefix="$(prefix)" includedir="$(includedir)" kernel_libdir="$(kernel_libdir)" bootdir="$(bootdir)" RUST_TARGET_PATH="$(RUST_TARGET_PATH)"  configure-phantom-fs-drivers
-
-phantom-fs-drivers/all: phantom-fs-drivers/
-	+$(MAKE)  CC="$(CC)" CFLAGS="$(CFLAGS)" RUSTC="$(RUSTC)" RUSTFLAGS="$(RUSTFLAGS)" prefix="$(prefix)" includedir="$(includedir)" kernel_libdir="$(kernel_libdir)" bootdir="$(bootdir)" RUST_TARGET_PATH="$(RUST_TARGET_PATH)"  -C phantom-fs-drivers all
-
-phantom-fs-drivers/install: phantom-fs-drivers/
-	+$(MAKE)  CC="$(CC)" CFLAGS="$(CFLAGS)" RUSTC="$(RUSTC)" RUSTFLAGS="$(RUSTFLAGS)" prefix="$(prefix)" includedir="$(includedir)" kernel_libdir="$(kernel_libdir)" bootdir="$(bootdir)" RUST_TARGET_PATH="$(RUST_TARGET_PATH)"  -C phantom-fs-drivers install
-
-phantom-fs-drivers/install-strip: phantom-fs-drivers/
-	+$(MAKE)  CC="$(CC)" CFLAGS="$(CFLAGS)" RUSTC="$(RUSTC)" RUSTFLAGS="$(RUSTFLAGS)" prefix="$(prefix)" includedir="$(includedir)" kernel_libdir="$(kernel_libdir)" bootdir="$(bootdir)" RUST_TARGET_PATH="$(RUST_TARGET_PATH)"  -C phantom-fs-drivers install-strip
-
-phantom-fs-drivers/clean: phantom-fs-drivers/
-	+$(MAKE)  CC="$(CC)" CFLAGS="$(CFLAGS)" RUSTC="$(RUSTC)" RUSTFLAGS="$(RUSTFLAGS)" prefix="$(prefix)" includedir="$(includedir)" kernel_libdir="$(kernel_libdir)" bootdir="$(bootdir)" RUST_TARGET_PATH="$(RUST_TARGET_PATH)"  -C phantom-fs-drivers clean
-
-
-.PHONY: configure-phantom-loader phantom-loader/all phantom-loader/install phantom-loader/install-strip phantom-loader/clean
-
-configure-phantom-loader:
-	$(MKDIR_P) phantom-loader
-	cd phantom-loader && ../$(srcdir)/phantom-loader/configure  CC="$(CC)" CFLAGS="$(CFLAGS)" RUSTC="$(RUSTC)" RUSTFLAGS="$(RUSTFLAGS)" prefix="$(prefix)" includedir="$(includedir)" kernel_libdir="$(kernel_libdir)" bootdir="$(bootdir)" RUST_TARGET_PATH="$(RUST_TARGET_PATH)"  -prefix=$(prefix) --includedir=$(includedir) --with-kernel-libdir=$(kernel_libdir) --with-bootdir=$(bootdir) --build=@build@ --host=@host@
-
-phantom-loader/: 
-	+$(MAKE)  CC="$(CC)" CFLAGS="$(CFLAGS)" RUSTC="$(RUSTC)" RUSTFLAGS="$(RUSTFLAGS)" prefix="$(prefix)" includedir="$(includedir)" kernel_libdir="$(kernel_libdir)" bootdir="$(bootdir)" RUST_TARGET_PATH="$(RUST_TARGET_PATH)"  configure-phantom-loader
-
-phantom-loader/all: phantom-loader/
-	+$(MAKE)  CC="$(CC)" CFLAGS="$(CFLAGS)" RUSTC="$(RUSTC)" RUSTFLAGS="$(RUSTFLAGS)" prefix="$(prefix)" includedir="$(includedir)" kernel_libdir="$(kernel_libdir)" bootdir="$(bootdir)" RUST_TARGET_PATH="$(RUST_TARGET_PATH)"  -C phantom-loader all
-
-phantom-loader/install: phantom-loader/
-	+$(MAKE)  CC="$(CC)" CFLAGS="$(CFLAGS)" RUSTC="$(RUSTC)" RUSTFLAGS="$(RUSTFLAGS)" prefix="$(prefix)" includedir="$(includedir)" kernel_libdir="$(kernel_libdir)" bootdir="$(bootdir)" RUST_TARGET_PATH="$(RUST_TARGET_PATH)"  -C phantom-loader install
-
-phantom-loader/install-strip: phantom-loader/
-	+$(MAKE)  CC="$(CC)" CFLAGS="$(CFLAGS)" RUSTC="$(RUSTC)" RUSTFLAGS="$(RUSTFLAGS)" prefix="$(prefix)" includedir="$(includedir)" kernel_libdir="$(kernel_libdir)" bootdir="$(bootdir)" RUST_TARGET_PATH="$(RUST_TARGET_PATH)"  -C phantom-loader install-strip
-
-phantom-loader/clean: phantom-loader/
-	+$(MAKE)  CC="$(CC)" CFLAGS="$(CFLAGS)" RUSTC="$(RUSTC)" RUSTFLAGS="$(RUSTFLAGS)" prefix="$(prefix)" includedir="$(includedir)" kernel_libdir="$(kernel_libdir)" bootdir="$(bootdir)" RUST_TARGET_PATH="$(RUST_TARGET_PATH)"  -C phantom-loader clean
-
-
-.PHONY: configure-phantom-kernel phantom-kernel/all phantom-kernel/install phantom-kernel/install-strip phantom-kernel/clean
-
-configure-phantom-kernel:
-	$(MKDIR_P) phantom-kernel
-	cd phantom-kernel && ../$(srcdir)/phantom-kernel/configure  CC="$(CC)" CFLAGS="$(CFLAGS)" RUSTC="$(RUSTC)" RUSTFLAGS="$(RUSTFLAGS)" prefix="$(prefix)" includedir="$(includedir)" kernel_libdir="$(kernel_libdir)" bootdir="$(bootdir)" RUST_TARGET_PATH="$(RUST_TARGET_PATH)"  -prefix=$(prefix) --includedir=$(includedir) --with-kernel-libdir=$(kernel_libdir) --with-bootdir=$(bootdir) --build=@build@ --host=@host@
-
-phantom-kernel/: 
-	+$(MAKE)  CC="$(CC)" CFLAGS="$(CFLAGS)" RUSTC="$(RUSTC)" RUSTFLAGS="$(RUSTFLAGS)" prefix="$(prefix)" includedir="$(includedir)" kernel_libdir="$(kernel_libdir)" bootdir="$(bootdir)" RUST_TARGET_PATH="$(RUST_TARGET_PATH)"  configure-phantom-kernel
-
-phantom-kernel/all: phantom-kernel/
-	+$(MAKE)  CC="$(CC)" CFLAGS="$(CFLAGS)" RUSTC="$(RUSTC)" RUSTFLAGS="$(RUSTFLAGS)" prefix="$(prefix)" includedir="$(includedir)" kernel_libdir="$(kernel_libdir)" bootdir="$(bootdir)" RUST_TARGET_PATH="$(RUST_TARGET_PATH)"  -C phantom-kernel all
-
-phantom-kernel/install: phantom-kernel/
-	+$(MAKE)  CC="$(CC)" CFLAGS="$(CFLAGS)" RUSTC="$(RUSTC)" RUSTFLAGS="$(RUSTFLAGS)" prefix="$(prefix)" includedir="$(includedir)" kernel_libdir="$(kernel_libdir)" bootdir="$(bootdir)" RUST_TARGET_PATH="$(RUST_TARGET_PATH)"  -C phantom-kernel install
-
-phantom-kernel/install-strip: phantom-kernel/
-	+$(MAKE)  CC="$(CC)" CFLAGS="$(CFLAGS)" RUSTC="$(RUSTC)" RUSTFLAGS="$(RUSTFLAGS)" prefix="$(prefix)" includedir="$(includedir)" kernel_libdir="$(kernel_libdir)" bootdir="$(bootdir)" RUST_TARGET_PATH="$(RUST_TARGET_PATH)"  -C phantom-kernel install-strip
-
-phantom-kernel/clean: phantom-kernel/
-	+$(MAKE)  CC="$(CC)" CFLAGS="$(CFLAGS)" RUSTC="$(RUSTC)" RUSTFLAGS="$(RUSTFLAGS)" prefix="$(prefix)" includedir="$(includedir)" kernel_libdir="$(kernel_libdir)" bootdir="$(bootdir)" RUST_TARGET_PATH="$(RUST_TARGET_PATH)"  -C phantom-kernel clean
+diststamp: stamp 

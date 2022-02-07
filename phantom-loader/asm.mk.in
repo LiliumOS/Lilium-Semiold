@@ -1,8 +1,6 @@
 
-stamp: asm/stamp
-
 asm/stamp: 
-	make -C asm/ all
+	make -C asm/@host_cpu@ all
 
 
 	
