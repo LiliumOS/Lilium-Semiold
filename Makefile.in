@@ -54,7 +54,7 @@ export RUSTC RUSTFLAGS CC CFLAGS RUST_TARGET_PATH bootdir kernel_libdir search_p
 # all
 
 all: 
-	+$(CARGO) build --target-dir $(builddir)/cargo-build --manifest-path $(srcdir)/Cargo.toml --target $(rustc_host_target)
+	+$(CARGO) build --target-dir $(builddir)/cargo-build --manifest-path $(srcdir)/Cargo.toml --target $(rustc_host_target) -Z build-std=core,alloc
 	+$(MAKE) stamp
 
 stamp: phantom-loader/asm/stamp $(kernel_name)
