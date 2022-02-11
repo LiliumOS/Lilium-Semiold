@@ -29,7 +29,7 @@ MKDIR_P = @MKDIR_P@
 
 CARGO = @CARGO@
 
-CFLAGS = -I@top_srcdir@/include -I@top_srcdir@/@host_cpu@/include
+CFLAGS = -I@top_srcdir@/include -I@top_srcdir@/@host_cpu@/include -ffreestanding
 
 .PHONY: all
 
