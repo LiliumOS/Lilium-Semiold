@@ -29,6 +29,16 @@
 
 #include <stddef.h>
 
+int memcmp(const void *lhs, const void *rhs, size_t count) {
+    const unsigned char *lhs_uc = lhs;
+    const unsigned char *rhs_uc = rhs;
+    for(size_t i = 0; i < count; i++) {
+        int result = ((int) lhs_uc[i]) - ((int) rhs_uc[i]);
+        if(result) return result;
+    }
+    return 0;
+}
+
 void* memcpy(void* restrict dst,const void* restrict src,size_t sz){
     for(size_t s = 0;s<sz;s++)
         ((unsigned char*)dst)[s] = ((const unsigned char*)src)[s];

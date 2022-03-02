@@ -61,7 +61,7 @@ __idt_ptr:
 .quad __idt
 
 .global _start
-.global _hlt
+.global _halt
 
 .section .text.init
 
@@ -165,9 +165,9 @@ start_x64:
     and $~15,%rsp
     .start_kernel:
     call start_kernel
-_hlt:
+_halt:
     cli
     hlt
-    jmp _hlt
+    jmp _halt
 
 
