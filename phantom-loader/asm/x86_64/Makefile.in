@@ -29,9 +29,9 @@ MKDIR_P = @MKDIR_P@
 
 CARGO = @CARGO@
 
-CFLAGS = -I@top_srcdir@/include -I@top_srcdir@/@host_cpu@/include -ffreestanding
+ALL_CFLAGS = -I@top_srcdir@/include -I@top_srcdir@/@host_cpu@/include -ffreestanding $(CFLAGS)
 
-.PHONY: all
+.PHONY: all clean
 
 all: stamp 
 
@@ -47,10 +47,11 @@ phantom-loader: loader.o memcpy.o interrupts.o $(loader_staticlib) | @top_srcdir
 phantom-loader.dbg: phantom-loader
 	$(OBJCOPY) --only-keep-debug phantom-loader phantom-loader.dbg
 
-
+clean:
+	rm -rf phantom-loader *.o *.o.i386 phantom-loader.dbg phantom-image
 
 %.o.i386: $(srcdir)/%.c
-	$(CC) $(CFLAGS) -m32 -c $^ -o $@
+	$(CC) $(ALL_CFLAGS) -m32 -c $^ -o $@
 
 %.o.i386: $(srcdir)/%.S
 	$(CC) $(ASFLAGS) -m32 -c $^ -o $@
@@ -59,7 +60,7 @@ loader-i386.o: @srcdir@/loader-i386.S
 	$(CC) $(ASFLAGS) -m32 -c $^ -o $@
 
 %.o: $(srcdir)/%.c
-	$(CC) $(CFLAGS) -mno-red-zone -c $^ -o $@
+	$(CC) $(ALL_CFLAGS) -mno-red-zone -c $^ -o $@
 
 %.o: $(srcdir)/%.S
 	$(CC) $(ASFLAGS) -c $^ -o $@
@@ -69,4 +70,4 @@ phantom-loader.o: phantom-loader | phantom-loader.dbg
 	$(OBJCOPY) -I binary -O elf32-i386 --rename-section .data=.data.img --redefine-sym _binary_phantom_loader_start=__head $^ $@
 
 phantom-image: phantom-loader.o loader-i386.o memcpy.o.i386 osimg.o.i386 | @srcdir@/i386-pc-phantom-loader.ld
-	$(CC) $(CFLAGS) -nostdlib -m32 -T @srcdir@/i386-pc-phantom-loader.ld -o $@ $^
+	$(CC) $(ALL_CFLAGS) -nostdlib -m32 -T @srcdir@/i386-pc-phantom-loader.ld -o $@ $^

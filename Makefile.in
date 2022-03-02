@@ -22,7 +22,7 @@ includedir = @libdir@
 
 bootdir = @bootdir@
 kernel_libdir = @kernel_libdir@
-search_paths = @search_paths@
+search_path = @search_paths@
 base_dirs = @base_dirs@
 kernel_name = @kernel_name@
 
@@ -49,7 +49,7 @@ cargo_builddir = cargo-build/$(rustc_host_target)/debug
 kernel_cdylib = $(cargo_builddir)/$(rust_cdylib_prefix)phantom_kernel$(rust_cdylib_suffix)
 loader_staticlib = $(cargo_builddir)/$(rust_staticlib_prefix)phantom_loader$(rust_staticlib_suffix)
 
-export RUSTC RUSTFLAGS CC CFLAGS RUST_TARGET_PATH bootdir kernel_libdir search_paths base_dirs kernel_name OBJCOPY STRIP RUSTC_FOR_BUILD RUSTFLAGS_FOR_BUILD
+export RUSTC RUSTFLAGS CC CFLAGS RUST_TARGET_PATH bootdir kernel_libdir search_path base_dirs kernel_name OBJCOPY STRIP RUSTC_FOR_BUILD RUSTFLAGS_FOR_BUILD
 
 # all
 

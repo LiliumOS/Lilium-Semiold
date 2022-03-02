@@ -61,10 +61,15 @@ name = "phantom-loader"
 version = "0.1.0"
 dependencies = [
  "phantom-panic-halt",
+ "phantom-print-vram",
 ]
 
 [[package]]
 name = "phantom-panic-halt"
+version = "0.1.0"
+
+[[package]]
+name = "phantom-print-vram"
 version = "0.1.0"
 
 [[package]]

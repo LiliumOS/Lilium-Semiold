@@ -2,5 +2,6 @@
 asm/stamp: 
 	make -C asm/@host_cpu@ all
 
-
+asm/clean:
+	make -C asm/@host_cpu@ clean
 	
