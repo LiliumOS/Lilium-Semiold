@@ -4,5 +4,5 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-compiler_builtins = "0.1.70"
+compiler_builtins = "0.1.69"
 stivale-boot = "0.2.6"

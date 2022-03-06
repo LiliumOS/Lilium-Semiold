@@ -2,7 +2,6 @@
 build-std = [
     "alloc",
     "core",
-    "proc_macro",
 ]
 
 [build]

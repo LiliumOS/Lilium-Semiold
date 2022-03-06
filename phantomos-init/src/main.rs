@@ -16,7 +16,7 @@ static STIVALE_HDR: StivaleHeader = StivaleHeader::new()
 #[allow(clippy::empty_loop)]
 #[no_mangle]
 extern "C" fn _start(stivale_data: *const StivaleStruct) -> ! {
-    let stivale_data = unsafe { stivale_data.as_ref().unwrap_unchecked() };
+    let stivale_data = unsafe { &*stivale_data };
     let terminal = stivale_data.terminal().unwrap();
     let term_write = terminal.term_write();
     term_write("Initializing PhantomOS...");
