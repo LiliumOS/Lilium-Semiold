@@ -49,6 +49,7 @@ SECTIONS
 
     /* Dynamic section needed for PIE */
     .dynamic : {
+        _DYNAMIC = .;
         *(.dynamic)
     } :data :dynamic
 

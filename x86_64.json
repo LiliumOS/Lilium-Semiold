@@ -10,6 +10,7 @@
     "env": "kernel",
     "vendor": "pc",
     "linker-flavor": "gcc",
+    "linker": "x86_64-pc-phantom-kernel-gcc",
     "target-family": "phantomos",
     "pre-link-args": {
          "gcc": ["-m64","-nostdlib","-Wl,-T,linker.ld"]
