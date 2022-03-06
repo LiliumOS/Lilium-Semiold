@@ -42,7 +42,7 @@ function build_limine {
     pushd build-limine > /dev/null
 
     test -x ../limine/configure || ../limine/autogen.sh || error "limine autogen failed"
-    test -f GNUmakefile || ../limine/configure || error "limine configure failed"
+    ../limine/configure BUILD_ELTORITO_EFI=yes || error "limine configure failed"
     make || error "limine build failed"
 
     popd > /dev/null
