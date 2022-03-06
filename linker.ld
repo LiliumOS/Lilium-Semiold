@@ -48,5 +48,5 @@ SECTIONS
     .dynamic ALIGN(4K) : {
         _DYNAMIC = .;
         KEEP(*(.dynamic*));
-    } :data :dynamic
+    }
 }
