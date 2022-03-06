@@ -12,7 +12,7 @@
     "linker-flavor": "gcc",
     "target-family": "phantomos",
     "pre-link-args": {
-         "gcc": ["-m64","-nostdlib"]
+         "gcc": ["-m64","-nostdlib","-Wl,-T,linker.ld"]
      },
      "features": "+mmx,+sse,+sse2,-avx,-avx2",
      "dynamic-linking": true,

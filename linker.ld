@@ -1,5 +1,13 @@
 ENTRY(_start)
 
+PHDRS
+{
+    headers PT_PHDR PHDRS;
+    text PT_LOAD FILEHDR PHDRS;
+    data PT_LOAD;
+    dynamic PT_DYNAMIC;
+}
+
 SECTIONS
 {
     kernel_phys_offset = 0xffffffff80000000;
@@ -8,7 +16,7 @@ SECTIONS
     .stivale2hdr ALIGN(4K) :
     {
         KEEP(*(.stivale2hdr))
-    }
+    } :text
 
     .text ALIGN(4K) :
     {
@@ -23,7 +31,7 @@ SECTIONS
     .data ALIGN(4K) :
     {
         KEEP(*(.data*))
-    }
+    } :data
 
     .bss ALIGN(4K) :
     {
@@ -37,9 +45,8 @@ SECTIONS
         KEEP(*(.got*))
     }
 
-    .dynamic ALIGN(4K) :
-    {
+    .dynamic ALIGN(4K) : {
         _DYNAMIC = .;
-        KEEP(*(.dynamic))
-    }
+        KEEP(*(.dynamic*));
+    } :data :dynamic
 }
