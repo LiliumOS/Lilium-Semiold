@@ -65,7 +65,7 @@ function build_iso {
         -efi-boot-part --efi-boot-image --protective-msdos-label \
         build-iso -o phantomos.iso || error "ISO build failed"
 
-    build-limine/bin/limine-install phantomos.iso "limine install failed"
+    build-limine/bin/limine-install phantomos.iso || error "limine install failed"
 
     echo $status ISO image successfully built
 }
