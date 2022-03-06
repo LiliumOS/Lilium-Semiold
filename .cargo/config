@@ -1,8 +1,0 @@
-[unstable]
-build-std = [
-    "alloc",
-    "core",
-]
-
-[build]
-target = "x86_64.json"
