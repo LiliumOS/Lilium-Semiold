@@ -43,7 +43,8 @@ function build_limine {
 
     test -x ../limine/configure || ../limine/autogen.sh || error "limine autogen failed"
     test -f GNUmakefile || ../limine/configure || error "limine configure failed"
-    test -d bin || make || error "limine build failed"
+    rm -rf bin
+    make || error "limine build failed"
 
     popd > /dev/null
 
@@ -53,7 +54,7 @@ function build_limine {
 function build_iso {
     echo $status building ISO image
 
-    rm -r build-iso
+    rm -rf build-iso
     mkdir -p build-iso/boot
     cp -v $INIT_PATH build-iso/phantomos.elf
     cp -v limine-iso.cfg build-iso/limine.cfg
