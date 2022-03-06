@@ -63,9 +63,9 @@ function build_iso {
         -no-emul-boot -boot-load-size 4 -boot-info-table \
         --efi-boot boot/limine-eltorito-efi.bin \
         -efi-boot-part --efi-boot-image --protective-msdos-label \
-        build-iso -o phantomos.iso
+        build-iso -o phantomos.iso || error "ISO build failed"
 
-    build-limine/bin/limine-install phantomos.iso
+    build-limine/bin/limine-install phantomos.iso "limine install failed"
 
     echo $status ISO image successfully built
 }
