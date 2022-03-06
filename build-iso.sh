@@ -28,7 +28,7 @@ function build_project {
     echo "$status building PhantomOS initializer, kernel, modules, and userspace"
 
     cargo build || error "cargo build failed"
-    export INIT_PATH=target/x86_64/debug/phantomos-init
+    export INIT_PATH=target/x86_64/debug/libphantomos_init.so
 
     echo "$status PhantomOS successfully built"
 }

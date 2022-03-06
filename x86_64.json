@@ -1,23 +1,28 @@
+
 {
-    "llvm-target": "x86_64-unknown-none-none",
-    "data-layout": "e-m:e-i64:64-f80:128-n8:16:32:64-S128",
-    "arch": "x86_64",
+    "llvm-target": "x86_64-unknown-none",
     "target-endian": "little",
     "target-pointer-width": "64",
     "target-c-int-width": "32",
-    "os": "none",
-    "executables": true,
+    "data-layout": "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128",
+    "arch": "x86_64",
+    "os": "phantom",
+    "env": "kernel",
+    "vendor": "pc",
     "linker-flavor": "gcc",
-    "linker": "gcc",
-    "panic-strategy": "abort",
-    "disable-redzone": true,
-    "features": "-mmx,-sse,+soft-float",
+    "target-family": "phantomos",
     "pre-link-args": {
-        "gcc": [
-            "-Wl,--script=linker.ld",
-            "-Wl,--nmagic",
-            "-nostartfiles",
-            "-Wl,--no-dynamic-linker"
-        ]
-    }
+         "gcc": ["-m64","-nostdlib"]
+     },
+     "features": "+mmx,+sse,+sse2,-avx,-avx2",
+     "dynamic-linking": true,
+     "executables": true,
+     "relocation-model": "pic",
+     "code-model": "small",
+     "disable-redzone": true,
+     "exe-suffix": "",
+     "has-rpath": false,
+     "no-default-libraries": true,
+     "position-independent-executables": true,
+     "panic-strategy": "abort"
 }

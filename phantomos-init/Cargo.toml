@@ -5,3 +5,7 @@ edition = "2021"
 
 [dependencies]
 stivale-boot = "0.2.6"
+
+[lib]
+crate-type = ["cdylib"]
+

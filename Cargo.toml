@@ -1,2 +1,4 @@
 [workspace]
 members = ["phantomos-init"]
+[profile.dev]
+codegen-units = 1
