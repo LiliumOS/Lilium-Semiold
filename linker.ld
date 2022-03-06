@@ -30,4 +30,16 @@ SECTIONS
         KEEP(*(COMMON))
         KEEP(*(.bss*))
     }
+
+    .got ALIGN(4K) :
+    {
+        _GLOBAL_OFFSET_TABLE_ = .;
+        KEEP(*(.got*))
+    }
+
+    .dynamic ALIGN(4K) :
+    {
+        _DYNAMIC = .;
+        KEEP(*(.dynamic))
+    }
 }
