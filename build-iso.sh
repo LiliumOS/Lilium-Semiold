@@ -43,7 +43,6 @@ function build_limine {
 
     test -x ../limine/configure || ../limine/autogen.sh || error "limine autogen failed"
     test -f GNUmakefile || ../limine/configure || error "limine configure failed"
-    rm -rf bin
     make || error "limine build failed"
 
     popd > /dev/null
