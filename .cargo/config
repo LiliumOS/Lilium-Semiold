@@ -1,7 +1,6 @@
 [unstable]
 build-std = [
     "alloc",
-    "compiler_builtins",
     "core",
     "proc_macro",
 ]
