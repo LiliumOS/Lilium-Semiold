@@ -23,6 +23,8 @@ static DYNAMIC_PTRS: [DynEntry; 4096 / core::mem::size_of::<DynEntry>()] = {
 #[cfg(target_arch = "x86_64")]
 global_asm! {
    r"
+.hidden DYNAMIC_PTRS
+
 .global _plt_lookup_sym
 .hidden _plt_lookup_sym
 _plt_lookup_sym:
