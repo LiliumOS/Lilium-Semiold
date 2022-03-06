@@ -23,6 +23,8 @@ SECTIONS
     /* bootloader will be able to relocate us as it sees fit. */
     . = 0xffffffff80200000;
 
+    _phantomos_init_start = .;
+
     .text : {
         *(.text*)
     } :text

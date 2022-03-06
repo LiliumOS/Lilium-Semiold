@@ -27,8 +27,12 @@ global_asm!(
 .global _start
 _start:
     // todo: Setup IDTR
-    lea rsi, [_GLOBAL_OFFSET_TABLE_+rip]
+    lea rsi, [DYNAMIC_PTRS+rip]
+    lea rdx, [_phantomos_init_start+rip]
+    mov [rsi], rdx
     lea rdx, [_DYNAMIC+rip]
+    mov [rsi+8], rdx
+    lea rsi, [_GLOBAL_OFFSET_TABLE_+rip]
     mov [rsi], rdx
     mov [rsi+8],rdx
     lea rdx, [_plt_lookup_sym+rip]

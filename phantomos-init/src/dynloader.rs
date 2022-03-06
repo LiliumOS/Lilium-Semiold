@@ -12,13 +12,8 @@ unsafe impl Sync for DynEntry {}
 
 #[no_mangle]
 #[used]
-static DYNAMIC_PTRS: [DynEntry; 4096 / core::mem::size_of::<DynEntry>()] = {
-    let mut x =
-        [DynEntry(0xffffffff80000000, core::ptr::null()); 4096 / core::mem::size_of::<DynEntry>()];
-    x[0] = DynEntry(0, unsafe { core::ptr::addr_of!(_DYNAMIC) });
-
-    x
-};
+static DYNAMIC_PTRS: [DynEntry; 4096 / core::mem::size_of::<DynEntry>()] =
+    [DynEntry(0, core::ptr::null()); 4096 / core::mem::size_of::<DynEntry>()];
 
 #[cfg(target_arch = "x86_64")]
 global_asm! {
