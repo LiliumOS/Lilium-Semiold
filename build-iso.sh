@@ -43,7 +43,7 @@ function build_limine {
 
     test -x ../limine/configure || ../limine/autogen.sh || error "limine autogen failed"
     ../limine/configure BUILD_ELTORITO_EFI=yes || error "limine configure failed"
-    make || error "limine build failed"
+    E9_OUTPUT=1 make || error "limine build failed"
 
     popd > /dev/null
 
