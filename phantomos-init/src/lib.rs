@@ -1,6 +1,7 @@
 #![no_std]
 
 use core::arch::global_asm;
+use core::fmt::Write;
 
 use stivale_boot::v2::{StivaleHeader, StivaleStruct, StivaleTerminalHeaderTag};
 
@@ -17,9 +18,11 @@ static STIVALE_HDR: StivaleHeader = StivaleHeader::new()
 #[cfg(target_arch = "x86_64")]
 pub mod x86_64;
 
-pub mod elf;
-
 pub mod dynloader;
+pub mod elf;
+pub mod writer;
+
+use writer::TerminalWriter;
 
 #[cfg(target_arch = "x86_64")]
 global_asm!(
@@ -46,11 +49,10 @@ _start:
 
 #[allow(clippy::empty_loop)]
 #[no_mangle]
-extern "C" fn main(stivale_data: *const StivaleStruct) -> ! {
-    let stivale_data = unsafe { &*stivale_data };
-    let terminal = stivale_data.terminal().unwrap();
-    let term_write = terminal.term_write();
-    term_write("Initializing PhantomOS...");
+unsafe extern "C" fn main(stivale_data: *const StivaleStruct) -> ! {
+    let stivale_data = &*stivale_data;
+    let mut terminal = TerminalWriter::new(stivale_data.terminal().unwrap());
+    write!(terminal, "Initializing PhantomOS...").unwrap();
     loop {}
 }
 
