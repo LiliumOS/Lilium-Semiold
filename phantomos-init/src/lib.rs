@@ -27,7 +27,6 @@ mod stivale_setup {
 pub mod x86_64;
 
 pub mod allocator;
-pub mod dynloader;
 mod dynloader;
 pub mod elf;
 pub mod writer;
