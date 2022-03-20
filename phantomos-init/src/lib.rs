@@ -25,6 +25,7 @@ mod stivale_setup {
 #[cfg(target_arch = "x86_64")]
 pub mod x86_64;
 
+pub mod allocator;
 pub mod dynloader;
 pub mod elf;
 pub mod writer;
