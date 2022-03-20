@@ -1,7 +1,7 @@
 use core::arch::global_asm;
 
 extern "C" {
-    static _DYNAMIC: core::ffi::c_void;
+    pub static _DYNAMIC: core::ffi::c_void;
 }
 
 #[repr(C)]
@@ -55,7 +55,9 @@ use crate::elf::*;
 
 #[no_mangle]
 #[cfg(target_arch = "x86_64")]
-unsafe extern "C" fn ldresolve(relno: u64, mut dynamic: *mut Elf64Dyn) -> *mut core::ffi::c_void {
+pub unsafe extern "C" fn ldresolve(relno: u64, dynoff: usize) -> *mut core::ffi::c_void {
+    let DynEntry(base, dynamic) = DYNAMIC_PTRS[dynoff];
+    let mut dynamic = dynamic as *const Elf64Dyn;
     let mut symtab = 0 as *const Elf64Sym;
     let mut strtab = 0 as *const u8;
     let mut reltab = 0 as *const Elf64Rela;
@@ -145,7 +147,7 @@ unsafe extern "C" fn ldresolve(relno: u64, mut dynamic: *mut Elf64Dyn) -> *mut c
         panic!("Could not find symbol");
     }
 
-    let ent = (*rel).r_offset as *mut *mut core::ffi::c_void;
+    let ent = (base as u64 + (*rel).r_offset) as *mut *mut core::ffi::c_void;
     *ent = val;
 
     val
