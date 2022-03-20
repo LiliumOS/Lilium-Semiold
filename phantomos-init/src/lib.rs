@@ -24,6 +24,9 @@ pub mod dynloader;
 #[cfg(target_arch = "x86_64")]
 global_asm!(
     r"
+
+.protected main
+
 .global _start
 _start:
     // todo: Setup IDTR
