@@ -53,7 +53,7 @@ SECTIONS
     .dynamic : {
         _DYNAMIC = .;
         *(.dynamic)
-    } :data :dynamic
+    } :dynamic
 
     .bss : {
         *(COMMON)
