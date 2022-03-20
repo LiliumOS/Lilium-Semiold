@@ -19,6 +19,7 @@ static DYNAMIC_PTRS: [DynEntry; 4096 / core::mem::size_of::<DynEntry>()] =
 global_asm! {
    r"
 .hidden DYNAMIC_PTRS
+.hidden ldresolve
 
 .global _plt_lookup_sym
 .hidden _plt_lookup_sym
