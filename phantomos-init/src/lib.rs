@@ -3,17 +3,24 @@
 use core::arch::global_asm;
 use core::fmt::Write;
 
-use stivale_boot::v2::{StivaleHeader, StivaleStruct, StivaleTerminalHeaderTag};
+use stivale_boot::v2::StivaleStruct;
 
-static STACK: [u8; 4096] = [0; 4096];
-static TERMINAL_HEADER_TAG: StivaleTerminalHeaderTag = StivaleTerminalHeaderTag::new().flags(0);
+mod stivale_setup {
+    use stivale_boot::v2::{StivaleHeader, StivaleTerminalHeaderTag};
 
-#[link_section = ".stivale2hdr"]
-#[no_mangle]
-#[used]
-static STIVALE_HDR: StivaleHeader = StivaleHeader::new()
-    .stack(&STACK[4095] as *const u8)
-    .tags(&TERMINAL_HEADER_TAG as *const StivaleTerminalHeaderTag as *const ());
+    #[repr(C, align(16))]
+    struct Stack([u8; 4096]);
+
+    static STACK: Stack = Stack([0; 4096]);
+    static TERMINAL_HEADER_TAG: StivaleTerminalHeaderTag = StivaleTerminalHeaderTag::new().flags(0);
+
+    #[link_section = ".stivale2hdr"]
+    #[no_mangle]
+    #[used]
+    static STIVALE_HDR: StivaleHeader = StivaleHeader::new()
+        .stack(&STACK.0[4095] as *const u8)
+        .tags(&TERMINAL_HEADER_TAG as *const StivaleTerminalHeaderTag as *const ());
+}
 
 #[cfg(target_arch = "x86_64")]
 pub mod x86_64;
