@@ -1,4 +1,5 @@
 [workspace]
-members = ["phantomos-init"]
+members = ["phantomos-init", "phantomos-kernel-std"]
+
 [profile.dev]
 codegen-units = 1

@@ -6,6 +6,7 @@ build = "build.rs"
 
 [dependencies]
 stivale-boot = "0.2.6"
+std = { path = "../phantomos-kernel-std" }
 
 [lib]
 crate-type = ["cdylib"]
