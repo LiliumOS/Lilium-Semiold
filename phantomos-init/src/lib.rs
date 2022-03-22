@@ -17,6 +17,7 @@ use core::fmt::Write;
 use core::mem::MaybeUninit;
 use elf::{Elf64Dyn, Elf64Rela};
 use stivale_boot::v2::StivaleStruct;
+use uuid::Uuid;
 use writer::TerminalWriter;
 
 mod stivale_setup {
@@ -108,6 +109,13 @@ unsafe extern "C" fn main(stivale_data: *const StivaleStruct) -> ! {
             i += 1;
         }
     }
+
+    let boot_volume = stivale_data.boot_volume().expect("could not locate boot volume; bootloader may be unsupported");
+    let boot_guid = boot_volume.guid;
+    let boot_part_guid = boot_volume.part_guid;
+
+    writeln!(term(), "Boot volume UUID: {}", Uuid::from(boot_guid)).unwrap();
+    writeln!(term(), "Boot volume partition UUID: {}", Uuid::from(boot_part_guid)).unwrap();
 
     loop {}
 }

@@ -14,6 +14,7 @@ version = "0.1.0"
 dependencies = [
  "std",
  "stivale-boot",
+ "uuid",
 ]
 
 [[package]]
@@ -22,9 +23,15 @@ version = "0.1.0"
 
 [[package]]
 name = "stivale-boot"
-version = "0.2.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3984cf9eb06b3115126ca13dffce8e45bc0f9a444391467c814b086acf50836d"
+version = "0.3.0"
+source = "git+https://github.com/rdrpenguin04/stivale?branch=stivale2_struct_tag_boot_volume#5dd6f7a3f4623ae16ddc0ffb861d13b1ed8a2c8c"
 dependencies = [
  "bitflags",
+ "uuid",
 ]
+
+[[package]]
+name = "uuid"
+version = "0.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bc5cf98d8186244414c848017f0e2676b3fcb46807f6668a97dfe67359a3c4b7"
