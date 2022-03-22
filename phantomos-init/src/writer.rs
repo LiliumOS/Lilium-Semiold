@@ -8,7 +8,10 @@ pub struct TerminalWriter<'a> {
 
 impl<'a> TerminalWriter<'a> {
     pub fn new(internal: &'a StivaleTerminalTag) -> Self {
-        Self { internal, _not_thread_safe: core::marker::PhantomData }
+        Self {
+            internal,
+            _not_thread_safe: core::marker::PhantomData,
+        }
     }
 }
 
