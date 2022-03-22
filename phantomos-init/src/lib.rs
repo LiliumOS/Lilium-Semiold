@@ -64,9 +64,7 @@ static mut TERMINAL: MaybeUninit<TerminalWriter> = MaybeUninit::uninit();
 fn term<'a>() -> &'a mut TerminalWriter<'static> {
     // This is actually unsound wrt interrupts, but that's not a problem yet.
     // TODO: do something clever
-    unsafe {
-        TERMINAL.assume_init_mut()
-    }
+    unsafe { TERMINAL.assume_init_mut() }
 }
 
 #[allow(clippy::empty_loop)]
@@ -74,19 +72,21 @@ fn term<'a>() -> &'a mut TerminalWriter<'static> {
 #[cfg(target_arch = "x86_64")]
 unsafe extern "C" fn main(stivale_data: *const StivaleStruct) -> ! {
     let stivale_data = &*stivale_data;
-    TERMINAL.write(TerminalWriter::new(stivale_data.terminal().unwrap_or_else(|| loop {})));
-    write!(
+    TERMINAL.write(TerminalWriter::new(
+        stivale_data.terminal().unwrap_or_else(|| loop {}),
+    ));
+    writeln!(
         term(),
-        "Initializing PhantomOS {}...\n",
+        "Initializing PhantomOS {}...",
         core::env!("CARGO_PKG_VERSION")
     )
     .unwrap();
 
-    if let Some(_) = stivale_data.kernel_slide() {
-        write!(term(), "Relocating Loader Symbols...\n",).unwrap();
+    if stivale_data.kernel_slide().is_some() {
+        writeln!(term(), "Relocating Loader Symbols...",).unwrap();
         let mut dynamic = core::ptr::addr_of!(dynloader::_DYNAMIC) as *const Elf64Dyn;
 
-        let mut reltab = 0 as *const Elf64Rela;
+        let mut reltab = core::ptr::null::<Elf64Rela>();
         let mut relsize = 0;
 
         while (*dynamic).d_tag != 0 {
@@ -102,7 +102,7 @@ unsafe extern "C" fn main(stivale_data: *const StivaleStruct) -> ! {
         while i < ((relsize as usize) / core::mem::size_of::<Elf64Rela>()) {
             let rel = reltab.add(1);
             if ((*rel).r_info) & 0xffffff == 7 {
-                write!(term(), "Applying JUMP_SLOT relocation {}...\n", i).unwrap();
+                writeln!(term(), "Applying JUMP_SLOT relocation {}...", i).unwrap();
                 dynloader::ldresolve(i as u64, 0);
             }
             i += 1;
@@ -115,9 +115,9 @@ unsafe extern "C" fn main(stivale_data: *const StivaleStruct) -> ! {
 #[panic_handler]
 fn handle_panic(info: &core::panic::PanicInfo) -> ! {
     if let Some(s) = info.message() {
-        write!(term(), "panic @ {}: {:?}\n", info.location().unwrap(), s).unwrap_or(());
+        writeln!(term(), "panic @ {}: {:?}", info.location().unwrap(), s).unwrap_or(());
     } else {
-        write!(term(), "panic @ {} (no message)\n", info.location().unwrap()).unwrap_or(());
+        writeln!(term(), "panic @ {} (no message)", info.location().unwrap()).unwrap_or(());
     }
     loop {}
 }

@@ -1,5 +1,6 @@
 use std::io::{self, Read, Seek, SeekFrom};
 
+#[allow(dead_code)]
 pub struct RawMemReader {
     address: *const u8,
     start: *const u8,
@@ -17,13 +18,13 @@ impl RawMemReader {
 }
 
 impl Read for RawMemReader {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+    fn read(&mut self, _buf: &mut [u8]) -> io::Result<usize> {
         todo!()
     }
 }
 
 impl Seek for RawMemReader {
-    fn seek(&mut self, pos: SeekFrom) -> io::Result<usize> {
+    fn seek(&mut self, _pos: SeekFrom) -> io::Result<usize> {
         todo!()
     }
 }

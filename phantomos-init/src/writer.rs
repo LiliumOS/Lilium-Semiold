@@ -17,6 +17,7 @@ impl<'a> TerminalWriter<'a> {
 
 impl Write for TerminalWriter<'_> {
     fn write_str(&mut self, s: &str) -> Result<(), Error> {
-        Ok(self.internal.term_write()(s))
+        self.internal.term_write()(s);
+        Ok(())
     }
 }

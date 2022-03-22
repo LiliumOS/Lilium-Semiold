@@ -3,7 +3,7 @@ use crate::util::ReadSeek;
 pub struct Devicetree {}
 
 impl Devicetree {
-    pub fn load<F: ReadSeek>(file: F) -> Self {
+    pub fn load<F: ReadSeek>(_file: F) -> Self {
         todo!()
     }
 }

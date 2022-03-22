@@ -33,7 +33,7 @@ unsafe impl GlobalAlloc for PhantomAllocator {
         }
 
         let mut allocated = 0;
-        if self
+        let result = self
             .remaining
             .fetch_update(SeqCst, SeqCst, |mut remaining| {
                 if size > remaining {
@@ -43,9 +43,8 @@ unsafe impl GlobalAlloc for PhantomAllocator {
                 remaining &= align_mask_to_round_down;
                 allocated = remaining;
                 Some(remaining)
-            })
-            .is_err()
-        {
+            });
+        if result.is_err() {
             return null_mut();
         };
         (self.arena.get() as *mut u8).add(allocated)

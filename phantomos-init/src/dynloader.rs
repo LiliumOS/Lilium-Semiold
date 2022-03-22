@@ -53,14 +53,15 @@ _plt_lookup_sym:
 
 use crate::elf::*;
 
+#[allow(clippy::missing_safety_doc)] // FIXME: Add safety docs
 #[no_mangle]
 #[cfg(target_arch = "x86_64")]
 pub unsafe extern "C" fn ldresolve(relno: u64, dynoff: usize) -> *mut core::ffi::c_void {
     let DynEntry(base, dynamic) = DYNAMIC_PTRS[dynoff];
     let mut dynamic = dynamic as *const Elf64Dyn;
-    let mut symtab = 0 as *const Elf64Sym;
-    let mut strtab = 0 as *const u8;
-    let mut reltab = 0 as *const Elf64Rela;
+    let mut symtab = core::ptr::null::<Elf64Sym>();
+    let mut strtab = core::ptr::null::<u8>();
+    let mut reltab = core::ptr::null::<Elf64Rela>();
 
     while (*dynamic).d_tag != 0 {
         if (*dynamic).d_tag == 23 {
@@ -93,15 +94,15 @@ pub unsafe extern "C" fn ldresolve(relno: u64, dynoff: usize) -> *mut core::ffi:
         }
     }
 
-    let mut val = 0 as *mut core::ffi::c_void;
+    let mut val = core::ptr::null_mut::<core::ffi::c_void>();
 
     let mut i = 0;
 
-    'a: while DYNAMIC_PTRS[i].1 != (0 as *const _) {
+    'a: while !DYNAMIC_PTRS[i].1.is_null() {
         let mut dynamic = DYNAMIC_PTRS[i].0 as *const Elf64Dyn;
-        let mut symtab = 0 as *const Elf64Sym;
-        let mut strtab = 0 as *const u8;
-        let mut htab = 0 as *const u32;
+        let mut symtab = core::ptr::null::<Elf64Sym>();
+        let mut strtab = core::ptr::null::<u8>();
+        let mut htab = core::ptr::null::<u32>();
 
         while (*dynamic).d_tag != 0 {
             if (*dynamic).d_tag == 6 {
@@ -143,7 +144,7 @@ pub unsafe extern "C" fn ldresolve(relno: u64, dynoff: usize) -> *mut core::ffi:
         i = i.wrapping_add(1);
     }
 
-    if val == (0 as *mut core::ffi::c_void) {
+    if val.is_null() {
         panic!("Could not find symbol");
     }
 
