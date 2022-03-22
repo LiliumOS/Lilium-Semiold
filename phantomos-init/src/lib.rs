@@ -15,9 +15,7 @@ pub mod writer;
 use core::arch::global_asm;
 use core::fmt::Write;
 use core::mem::MaybeUninit;
-use devicetree::Devicetree;
 use elf::{Elf64Dyn, Elf64Rela};
-use rawmem::RawMemReader;
 use stivale_boot::v2::StivaleStruct;
 use writer::TerminalWriter;
 
@@ -76,7 +74,7 @@ fn term<'a>() -> &'a mut TerminalWriter<'static> {
 #[cfg(target_arch = "x86_64")]
 unsafe extern "C" fn main(stivale_data: *const StivaleStruct) -> ! {
     let stivale_data = &*stivale_data;
-    TERMINAL.write(TerminalWriter::new(stivale_data.terminal().unwrap()));
+    TERMINAL.write(TerminalWriter::new(stivale_data.terminal().unwrap_or_else(|| loop {})));
     write!(
         term(),
         "Initializing PhantomOS {}...\n",
@@ -110,12 +108,6 @@ unsafe extern "C" fn main(stivale_data: *const StivaleStruct) -> ! {
             i += 1;
         }
     }
-
-    let devicetree = stivale_data.dev_tree().unwrap();
-    let devicetree = Devicetree::load(RawMemReader::new(
-        devicetree.address as *const u8,
-        devicetree.size as usize,
-    ));
 
     loop {}
 }
