@@ -74,6 +74,140 @@ fn term<'a>() -> &'a mut TerminalWriter<'static> {
     unsafe { TERMINAL.assume_init_mut() }
 }
 
+mod gdt_setup {
+    use core::arch::asm;
+
+    #[repr(C)]
+    struct GDTEntry {
+        pub limit_lo: u16,
+        pub base_lo: u16,
+        pub base_mid: u8,
+        pub access: u8,
+        pub limit_hi_and_flags: u8,
+        pub base_hi: u8,
+    }
+
+    static mut GDT: [GDTEntry; 11] = [
+        GDTEntry {
+            limit_lo: 0,
+            base_lo: 0,
+            base_mid: 0,
+            access: 0,
+            limit_hi_and_flags: 0,
+            base_hi: 0,
+        }, // NULL Selector
+        GDTEntry {
+            limit_lo: 0xffff,
+            base_lo: 0,
+            base_mid: 0,
+            access: 0x9A,
+            limit_hi_and_flags: 0x0f,
+            base_hi: 0,
+        }, // 16-bit cs
+        GDTEntry {
+            limit_lo: 0xffff,
+            base_lo: 0,
+            base_mid: 0,
+            access: 0x92,
+            limit_hi_and_flags: 0x0f,
+            base_hi: 0,
+        }, // 16-bit ds
+        GDTEntry {
+            limit_lo: 0xffff,
+            base_lo: 0,
+            base_mid: 0,
+            access: 0x9A,
+            limit_hi_and_flags: 0xcf,
+            base_hi: 0,
+        }, // 32-bit cs
+        GDTEntry {
+            limit_lo: 0xffff,
+            base_lo: 0,
+            base_mid: 0,
+            access: 0x92,
+            limit_hi_and_flags: 0xcf,
+            base_hi: 0,
+        }, // 32-bit ds
+        GDTEntry {
+            limit_lo: 0xffff,
+            base_lo: 0,
+            base_mid: 0,
+            access: 0x9A,
+            limit_hi_and_flags: 0xaf,
+            base_hi: 0,
+        }, // 64-bit cs
+        GDTEntry {
+            limit_lo: 0xffff,
+            base_lo: 0,
+            base_mid: 0,
+            access: 0x92,
+            limit_hi_and_flags: 0xcf,
+            base_hi: 0,
+        }, // 64-bit ds
+        GDTEntry {
+            limit_lo: 0xffff,
+            base_lo: 0,
+            base_mid: 0,
+            access: 0xfa,
+            limit_hi_and_flags: 0xcf,
+            base_hi: 0,
+        }, // 32-bit user cs
+        GDTEntry {
+            limit_lo: 0xffff,
+            base_lo: 0,
+            base_mid: 0,
+            access: 0xf2,
+            limit_hi_and_flags: 0xcf,
+            base_hi: 0,
+        }, // 32-bit user ds
+        GDTEntry {
+            limit_lo: 0xffff,
+            base_lo: 0,
+            base_mid: 0,
+            access: 0xfa,
+            limit_hi_and_flags: 0xaf,
+            base_hi: 0,
+        }, // 32-bit user cs
+        GDTEntry {
+            limit_lo: 0xffff,
+            base_lo: 0,
+            base_mid: 0,
+            access: 0xf2,
+            limit_hi_and_flags: 0xcf,
+            base_hi: 0,
+        }, // 64-bit user ds
+    ];
+
+    #[repr(C, packed)]
+    pub struct GDTR64 {
+        limit: u16,
+        base: u64,
+    }
+
+    pub unsafe fn setup_gdt() {
+        let gdtr = GDTR64 {
+            limit: (704),
+            base: core::ptr::addr_of_mut!(GDT) as usize as u64,
+        };
+        asm!("lgdt [{0}]",
+        "mov ax, 6",
+        "mov ds, ax",
+        "mov ss, ax",
+        "mov es, ax",
+        "mov fs, ax",
+        "mov gs, ax",
+        "lea rax, 2f",
+        "push rax",
+        "mov ax, 5",
+        "push ax",
+        "jmp [rsp]",
+        "2: ",
+        "pop ax",
+        "pop rax"
+        , in(reg) &gdtr, out("rax")_);
+    }
+}
+
 mod idt_setup {
     use alloc::boxed::Box;
     use core::arch::asm;
@@ -110,7 +244,7 @@ mod idt_setup {
                     offset1: (offset as usize & 0xFFFF) as u16,
                     offset2: ((offset as usize >> 16) & 0xFFFF) as u16,
                     offset3: (offset as usize >> 32) as u32,
-                    selector: 0,
+                    selector: 5,
                     ist: 0,
                     type_attributes: 0,
                     zero: 0,
@@ -159,10 +293,10 @@ mod idt_setup {
         let limit = u16::try_from(idt.len()*core::mem::size_of::<InterruptDescriptor>()).unwrap();
         let idt = Box::new(idt);
 
-        #[repr(C)]
+        #[repr(C,packed)]
         struct IDTR64{
-            base: u64,
-            limit: u16
+            limit: u16,
+            base: u64
         }
 
         let idtr = IDTR64{base: Box::leak(idt) as *mut _ as u64,limit};
@@ -179,8 +313,6 @@ unsafe fn register_idt() {
 #[no_mangle]
 #[cfg(target_arch = "x86_64")]
 unsafe extern "C" fn main(stivale_data: *const StivaleStruct) -> ! {
-    use core::arch::asm;
-
     let stivale_data = &*stivale_data;
     TERMINAL.write(TerminalWriter::new(
         stivale_data.terminal().unwrap_or_else(|| loop {}),
@@ -220,6 +352,10 @@ unsafe extern "C" fn main(stivale_data: *const StivaleStruct) -> ! {
         writeln!(term(), "Relocating loader symbols... done",).unwrap();
     }
 
+    writeln!(term(), "Setting up global descriptor table...").unwrap();
+    gdt_setup::setup_gdt();
+    writeln!(term(), "Setting up global descriptor table... done").unwrap();
+
     writeln!(term(), "Setting up interrupts...").unwrap();
     register_idt();
     writeln!(term(), "Setting up interrupts... done").unwrap();
@@ -237,8 +373,6 @@ unsafe extern "C" fn main(stivale_data: *const StivaleStruct) -> ! {
         Uuid::from(boot_part_guid)
     )
     .unwrap();
-
-    asm!("ud2");
 
     loop {}
 }
