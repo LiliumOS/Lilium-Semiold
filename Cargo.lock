@@ -9,9 +9,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 
 [[package]]
+name = "paste"
+version = "1.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0744126afe1a6dd7f394cb50a716dbe086cb06e255e53d8d0185d82828358fb5"
+
+[[package]]
 name = "phantomos-init"
 version = "0.1.0"
 dependencies = [
+ "paste",
  "std",
  "stivale-boot",
  "uuid",
@@ -24,7 +31,7 @@ version = "0.1.0"
 [[package]]
 name = "stivale-boot"
 version = "0.3.0"
-source = "git+https://github.com/rdrpenguin04/stivale?branch=stivale2_struct_tag_boot_volume#5dd6f7a3f4623ae16ddc0ffb861d13b1ed8a2c8c"
+source = "git+https://github.com/Andy-Python-Programmer/stivale#481d8fedf5ca0dda7960b5638182f80ef5cb2dc3"
 dependencies = [
  "bitflags",
  "uuid",

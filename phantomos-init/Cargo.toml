@@ -5,10 +5,10 @@ edition = "2021"
 build = "build.rs"
 
 [dependencies]
-stivale-boot = { git = "https://github.com/rdrpenguin04/stivale", branch = "stivale2_struct_tag_boot_volume" }
+paste = "1.0.6"
+stivale-boot = { git = "https://github.com/Andy-Python-Programmer/stivale", features = ["uuid"] }
 std = { path = "../phantomos-kernel-std" }
 uuid = { version = "0.8.2", default-features = false }
 
 [lib]
 crate-type = ["cdylib"]
-
