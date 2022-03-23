@@ -2,6 +2,7 @@ pub enum SeekFarFrom {
     Start(u128),
     End(i128),
     Current(i128),
+    SectorStart(u128),
 }
 
 pub enum SeekFrom {

@@ -100,7 +100,7 @@ pub unsafe extern "C" fn ldresolve(relno: u64, dynoff: usize) -> *mut core::ffi:
 
     'a: while !DYNAMIC_PTRS[i].1.is_null() {
         let mut dynamic = DYNAMIC_PTRS[i].0 as *const Elf64Dyn;
-        let mut symtab = core::ptr::null::<Elf64Sym>();
+        let mut symtab = 0 as *const Elf64Sym;
         let mut strtab = core::ptr::null::<u8>();
         let mut htab = core::ptr::null::<u32>();
 

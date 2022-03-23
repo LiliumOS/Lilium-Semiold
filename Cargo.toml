@@ -1,5 +1,5 @@
 [workspace]
-members = ["phantomos-init", "phantomos-kernel-std"]
+members = ["phantomos-init", "phantomos-kernel-std", "phantom-filesystem-drivers"]
 
 [profile.dev]
 codegen-units = 1
