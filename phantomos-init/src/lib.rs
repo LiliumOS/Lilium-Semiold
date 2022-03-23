@@ -196,19 +196,16 @@ mod gdt_setup {
         "mov es, ax",
         "mov fs, ax",
         "mov gs, ax",
-        "mov ax, 0x28",
-        "push ax",
-        "push ax",
+        "mov rax, 0x28",
+        "push rax",
         "lea rax, [rip+2f]",
         "push rax",
         "nop",
         "nop",
         "nop",
-        "retf",
+        "retfq",
         "2: ",
-        "pop ax",
-        "pop rax"
-        , in(reg) &gdtr, out("rax")_);
+        in(reg) &gdtr, out("rax")_);
     }
 }
 
