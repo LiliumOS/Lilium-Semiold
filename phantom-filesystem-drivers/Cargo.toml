@@ -9,4 +9,4 @@ edition = "2021"
 std = { path = "../phantomos-kernel-std" }
 
 [lib]
-crate-type = ["cdylib","rlib"]
+crate-type = ["rlib"]

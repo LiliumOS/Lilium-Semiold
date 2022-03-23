@@ -97,7 +97,7 @@ mod idt_setup {
                 fn [<launchpad_ $name>] () {
                     ::core::todo!("This is a todo!() macro to prevent, uh, doing a bad");
                 }
-                let offset: *const _ = &[<launchpad_ $name>];
+                let offset: *mut () = [<launchpad_ $name>] as *mut ();
                 $crate::idt_setup::InterruptDescriptor {
                     offset1: (offset as usize & 0xFFFF) as u16,
                     offset2: ((offset as usize >> 16) & 0xFFFF) as u16,
