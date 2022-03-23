@@ -101,7 +101,8 @@ mod idt_setup {
     macro_rules! generate_idt {
         [$(($name:ident, $type:expr)),*] => ([$({
             paste! {
-                fn [<launchpad_ $name:snake>] () {
+                #[allow(non_snake_case)]
+                fn [<launchpad_ $name>] () {
                     ::core::todo!("This is a todo!() macro to prevent, uh, doing a bad");
                 }
                 let offset: *mut () = [<launchpad_ $name>] as *mut ();
@@ -155,8 +156,18 @@ mod idt_setup {
             (PHANTOM7C, Return), (PHANTOM7D, Return), (PHANTOM7E, Return), (PHANTOM7F, Return),
             (PHANTOM80, Return)
         ];
-        let idt = Box::pin(idt);
-        asm!("lidt {0}", in(reg) (Pin::into_inner(idt.as_ref()) as *const _));
+        let limit = u16::try_from(idt.len()*core::mem::size_of::<InterruptDescriptor>()).unwrap();
+        let idt = Box::new(idt);
+
+        #[repr(C)]
+        struct IDTR64{
+            base: u64,
+            limit: u16
+        }
+
+        let idtr = IDTR64{base: Box::leak(idt) as *mut _ as u64,limit};
+        
+        asm!("lidt [{0}]", in(reg) (&idtr));
     }
 }
 
@@ -168,6 +179,8 @@ unsafe fn register_idt() {
 #[no_mangle]
 #[cfg(target_arch = "x86_64")]
 unsafe extern "C" fn main(stivale_data: *const StivaleStruct) -> ! {
+    use core::arch::asm;
+
     let stivale_data = &*stivale_data;
     TERMINAL.write(TerminalWriter::new(
         stivale_data.terminal().unwrap_or_else(|| loop {}),
@@ -224,6 +237,8 @@ unsafe extern "C" fn main(stivale_data: *const StivaleStruct) -> ! {
         Uuid::from(boot_part_guid)
     )
     .unwrap();
+
+    asm!("ud2");
 
     loop {}
 }
