@@ -9,6 +9,7 @@ paste = "1.0.6"
 stivale-boot = { git = "https://github.com/Andy-Python-Programmer/stivale", features = ["uuid"] }
 std = { path = "../phantomos-kernel-std" }
 uuid = { version = "0.8.2", default-features = false }
+bytemuck = "1.7"
 
 [lib]
 crate-type = ["cdylib"]
