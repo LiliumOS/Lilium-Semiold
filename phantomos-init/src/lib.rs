@@ -245,7 +245,7 @@ mod idt_setup {
                     offset1: (offset as usize & 0xFFFF) as u16,
                     offset2: ((offset as usize >> 16) & 0xFFFF) as u16,
                     offset3: (offset as usize >> 32) as u32,
-                    selector: 5,
+                    selector: 0x28,
                     ist: 0,
                     type_attributes: 0x8F,
                     zero: 0,

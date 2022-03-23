@@ -55,3 +55,4 @@ com1: enabled=true, mode=file, dev=serial.txt
 com2: enabled=false
 com3: enabled=false
 com4: enabled=false
+debug_symbols: file=build-iso/phantomos.elf.sym
