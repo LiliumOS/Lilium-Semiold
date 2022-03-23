@@ -358,7 +358,7 @@ unsafe extern "C" fn main(stivale_data: *const StivaleStruct) -> ! {
     writeln!(term(), "Setting up global descriptor table... done").unwrap();
 
     writeln!(term(), "Setting up interrupts...").unwrap();
-    //register_idt();
+    register_idt();
     writeln!(term(), "Setting up interrupts... done").unwrap();
 
     let boot_volume = stivale_data
