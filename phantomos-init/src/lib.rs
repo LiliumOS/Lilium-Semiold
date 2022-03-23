@@ -247,7 +247,7 @@ mod idt_setup {
                     offset3: (offset as usize >> 32) as u32,
                     selector: 5,
                     ist: 0,
-                    type_attributes: 0,
+                    type_attributes: 0x8F,
                     zero: 0,
                 }
             }
@@ -374,6 +374,8 @@ unsafe extern "C" fn main(stivale_data: *const StivaleStruct) -> ! {
         Uuid::from(boot_part_guid)
     )
     .unwrap();
+
+    unsafe { core::arch::asm!("ud2"); }
 
     loop {}
 }
