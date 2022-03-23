@@ -186,21 +186,25 @@ mod gdt_setup {
 
     pub unsafe fn setup_gdt() {
         let gdtr = GDTR64 {
-            limit: (704),
+            limit: 88,
             base: core::ptr::addr_of_mut!(GDT) as usize as u64,
         };
         asm!("lgdt [{0}]",
-        "mov ax, 6",
+        "mov ax, 0x30",
         "mov ds, ax",
         "mov ss, ax",
         "mov es, ax",
         "mov fs, ax",
         "mov gs, ax",
-        "lea rax, 2f",
-        "push rax",
-        "mov ax, 5",
+        "mov ax, 0x28",
         "push ax",
-        "jmp [rsp]",
+        "push ax",
+        "lea rax, [rip+2f]",
+        "push rax",
+        "nop",
+        "nop",
+        "nop",
+        "retf",
         "2: ",
         "pop ax",
         "pop rax"
@@ -357,7 +361,7 @@ unsafe extern "C" fn main(stivale_data: *const StivaleStruct) -> ! {
     writeln!(term(), "Setting up global descriptor table... done").unwrap();
 
     writeln!(term(), "Setting up interrupts...").unwrap();
-    register_idt();
+    //register_idt();
     writeln!(term(), "Setting up interrupts... done").unwrap();
 
     let boot_volume = stivale_data
