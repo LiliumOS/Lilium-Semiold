@@ -376,14 +376,14 @@ unsafe extern "C" fn main(stivale_data: *const StivaleStruct) -> ! {
     .unwrap();
 
     writeln!(term(), "Determining CPU Manufacturer signature... ").unwrap();
-    // let x = x86_64::cpuid(0);
+    let x = x86_64::cpuid(0);
 
-    // writeln!(
-    //     term(),
-    //     "Determining CPU Manufacturer signature... {}",
-    //     core::str::from_utf8(bytemuck::cast_slice(&x[1..])).unwrap()
-    // )
-    // .unwrap();
+    writeln!(
+        term(),
+        "Determining CPU Manufacturer signature... {}",
+        core::str::from_utf8(bytemuck::cast_slice(&x[1..])).unwrap()
+    )
+    .unwrap();
 
     loop {}
 }
