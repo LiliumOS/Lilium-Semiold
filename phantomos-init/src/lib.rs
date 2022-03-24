@@ -6,6 +6,7 @@
 #[cfg(target_arch = "x86_64")]
 pub mod x86_64;
 
+pub mod acpi;
 pub mod allocator;
 pub mod devicetree;
 pub mod dynloader;
@@ -19,6 +20,7 @@ extern crate alloc;
 #[macro_use]
 extern crate paste;
 
+use acpi::RsdpDescriptor;
 use core::arch::global_asm;
 use core::fmt::Write;
 use core::mem::MaybeUninit;
@@ -31,9 +33,9 @@ mod stivale_setup {
     use stivale_boot::v2::{StivaleHeader, StivaleTerminalHeaderTag};
 
     #[repr(C, align(16))]
-    struct Stack([u8; 4096]);
+    struct Stack([u8; 1024*1024]);
 
-    static STACK: Stack = Stack([0; 4096]);
+    static STACK: Stack = Stack([0; 1024*1024]);
     static TERMINAL_HEADER_TAG: StivaleTerminalHeaderTag = StivaleTerminalHeaderTag::new().flags(0);
 
     #[link_section = ".stivale2hdr"]
@@ -361,6 +363,11 @@ unsafe extern "C" fn main(stivale_data: *const StivaleStruct) -> ! {
     writeln!(term(), "Setting up interrupts...").unwrap();
     register_idt();
     writeln!(term(), "Setting up interrupts... done").unwrap();
+
+    writeln!(term(), "Reading device list...").unwrap();
+    let rsdp: RsdpDescriptor = *bytemuck::cast_ref(&*(stivale_data.rsdp().unwrap().rsdp as *const [u8; 36]));
+    rsdp.validate();
+    writeln!(term(), "OEM ID: {}", rsdp.oemid()).unwrap();
 
     let boot_volume = stivale_data
         .boot_volume()
