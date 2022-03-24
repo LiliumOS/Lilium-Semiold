@@ -1,4 +1,5 @@
 #![no_std]
+#![feature(const_ptr_offset)]
 #![feature(default_alloc_error_handler)]
 #![feature(panic_info_message)]
 
@@ -39,7 +40,7 @@ mod stivale_setup {
     #[no_mangle]
     #[used]
     static STIVALE_HDR: StivaleHeader = StivaleHeader::new()
-        .stack(&STACK.0[4095] as *const u8)
+        .stack((&STACK.0).as_ptr_range().end)
         .tags(&TERMINAL_HEADER_TAG as *const StivaleTerminalHeaderTag as *const ());
 }
 
