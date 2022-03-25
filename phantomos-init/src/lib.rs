@@ -365,12 +365,6 @@ unsafe extern "C" fn main(stivale_data: *const StivaleStruct) -> ! {
     register_idt();
     writeln!(term(), "Setting up interrupts... done").unwrap();
 
-    writeln!(term(), "Reading device list...").unwrap();
-    let rsdp: RsdpDescriptor =
-        *bytemuck::cast_ref(&*(stivale_data.rsdp().unwrap().rsdp as *const [u8; 36]));
-    rsdp.validate();
-    writeln!(term(), "OEM ID: {}", rsdp.oem_id()).unwrap();
-
     let boot_volume = stivale_data
         .boot_volume()
         .expect("could not locate boot volume; bootloader may be unsupported");
@@ -394,6 +388,13 @@ unsafe extern "C" fn main(stivale_data: *const StivaleStruct) -> ! {
         core::str::from_utf8(bytemuck::cast_slice(&x[1..])).unwrap()
     )
     .unwrap();
+
+    writeln!(term(), "Reading device list...").unwrap();
+    let rsdp: RsdpDescriptor =
+        *bytemuck::cast_ref(&*(stivale_data.rsdp().unwrap().rsdp as *const [u8; 36]));
+    rsdp.validate();
+    writeln!(term(), "OEM ID: {}", rsdp.oem_id()).unwrap();
+    writeln!(term(), "XSDT: {:?}", rsdp.xsdt()).unwrap();
 
     loop {}
 }
