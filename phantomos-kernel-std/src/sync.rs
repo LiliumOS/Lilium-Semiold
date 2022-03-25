@@ -1,4 +1,4 @@
-use core::{arch::asm, mem::MaybeUninit};
+use core::{arch::asm, cell::UnsafeCell, mem::MaybeUninit, sync::atomic::AtomicUsize};
 
 pub mod atomic {
     pub use core::sync::atomic::*;
@@ -29,7 +29,11 @@ impl<T> OnceCell<T> {
 
     fn begin_init(&self) -> bool {
         if (self.flag.load(atomic::Ordering::Relaxed) & ONCE_INIT) == 0 {
-            while (self.flag.fetch_or(ONCE_LOCKED, atomic::Ordering::Acquire) & ONCE_LOCKED) != 0 {}
+            while (self.flag.fetch_or(ONCE_LOCKED, atomic::Ordering::Acquire) & ONCE_LOCKED) != 0 {
+                unsafe {
+                    asm!("pause");
+                }
+            }
             if (self.flag.load(atomic::Ordering::Relaxed) & ONCE_INIT) == 0 {
                 true
             } else {
@@ -51,7 +55,7 @@ impl<T> OnceCell<T> {
     }
 
     pub fn get(&self) -> Option<&T> {
-        if (self.flag.load(Ordering::Acquire) & ONCE_INIT) != 0 {
+        if (self.flag.load(atomic::Ordering::Acquire) & ONCE_INIT) != 0 {
             // SAFETY:
             // Initialization has occured, and no other initialization can be performed.
             // No writes occur after the first initialization w/o a mutable reference
@@ -63,7 +67,7 @@ impl<T> OnceCell<T> {
     }
 
     pub fn get_mut(&mut self) -> Option<&mut T> {
-        if (self.flag.load(Ordering::Acquire) & ONCE_INIT) != 0 {
+        if (self.flag.load(atomic::Ordering::Acquire) & ONCE_INIT) != 0 {
             // SAFETY:
             // Initialization has occured, so the value returned is valid
             // Having `&mut self` precludes all other access to the OnceCell
@@ -109,7 +113,7 @@ impl<T> OnceCell<T> {
         // Initialization has just occured, and no other initialization can be performed.
         // No writes occur after the first initialization w/o a mutable reference
         // Thus returning a `&T` is safe
-        Some(unsafe { &*(self.cell.get().cast::<T>()) })
+        unsafe { &*(self.cell.get().cast::<T>()) }
     }
 
     pub fn get_or_try_init<E, F: FnOnce() -> Result<T, E>>(&self, f: F) -> Result<&T, E> {
@@ -136,6 +140,6 @@ impl<T> OnceCell<T> {
         // Initialization has just occured, and no other initialization can be performed.
         // No writes occur after the first initialization w/o a mutable reference
         // Thus returning a `&T` is safe
-        Some(unsafe { &*(self.cell.get().cast::<T>()) })
+        Ok(unsafe { &*(self.cell.get().cast::<T>()) })
     }
 }

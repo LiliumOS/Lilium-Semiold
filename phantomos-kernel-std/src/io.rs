@@ -23,15 +23,6 @@ impl core::fmt::Display for Error {
     }
 }
 
-#[cfg(feature = "std")]
-impl From<rust_std::io::Error> for Error {
-    fn from(err: rust_std::io::Error) -> Error {
-        match err.kind() {
-            _ => todo!(),
-        }
-    }
-}
-
 pub type Result<T> = core::result::Result<T, Error>;
 
 pub trait Read {

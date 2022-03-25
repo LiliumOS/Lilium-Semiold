@@ -25,9 +25,9 @@ extern crate paste;
 use acpi::RsdpDescriptor;
 use core::arch::global_asm;
 use core::fmt::Write;
-use core::lazy::OnceCell;
 use core::mem::MaybeUninit;
 use elf::{Elf64Dyn, Elf64Rela};
+use std::sync::OnceCell;
 use stivale_boot::v2::{StivaleMemoryMapTag, StivaleStruct};
 use uuid::Uuid;
 use writer::TerminalWriter;
@@ -369,7 +369,11 @@ unsafe extern "C" fn main(stivale_data: *const StivaleStruct) -> ! {
     writeln!(term(), "Setting up interrupts... done").unwrap();
 
     // SAFETY: we are the first people to call set.
-    unsafe { MEMORY_MAP.set(stivale_data.memory_map().unwrap()).unwrap_unchecked() };
+    unsafe {
+        MEMORY_MAP
+            .set(stivale_data.memory_map().unwrap())
+            .unwrap_unchecked()
+    };
 
     let boot_volume = stivale_data
         .boot_volume()
@@ -386,7 +390,7 @@ unsafe extern "C" fn main(stivale_data: *const StivaleStruct) -> ! {
     .unwrap();
 
     writeln!(term(), "Determining CPU Manufacturer signature... ").unwrap();
-    let x = x86_64::cpuid(0);
+    let x = x86_64::cpuid(0, 0);
 
     writeln!(
         term(),
@@ -394,6 +398,11 @@ unsafe extern "C" fn main(stivale_data: *const StivaleStruct) -> ! {
         core::str::from_utf8(bytemuck::cast_slice(&x[1..])).unwrap()
     )
     .unwrap();
+
+    writeln!(term(), "Determining CPU Feature Set... ").unwrap();
+    let features = x86_64::features::get_x86_features();
+
+    writeln!(term(), "Determining CPU Feature Set... {:?}", features).unwrap();
 
     writeln!(term(), "Reading device list...").unwrap();
     let rsdp: RsdpDescriptor =

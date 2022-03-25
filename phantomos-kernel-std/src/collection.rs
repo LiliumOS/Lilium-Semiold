@@ -1,0 +1,831 @@
+use core::borrow::Borrow;
+use core::fmt::Debug;
+use core::hash::{BuildHasher, Hash, Hasher};
+use core::iter::{FromIterator, FusedIterator};
+use core::marker::PhantomData;
+use core::mem::MaybeUninit;
+use core::ops::Index;
+
+use crate::hash::XLangHasher;
+use alloc::alloc::{Allocator, Global, Layout};
+use core::hash::BuildHasherDefault;
+use core::ptr::NonNull;
+
+#[repr(C)]
+struct HashMapSlot<K, V> {
+    ecount: usize,
+    entries: [MaybeUninit<(K, V)>; 16],
+}
+
+/// An ABI Safe [`HashMap`] that uses an Allocator to obtain the memory to store the slots
+#[repr(C)]
+pub struct HashMap<K, V, H: BuildHasher = BuildHasherDefault<XLangHasher>, A: Allocator = Global> {
+    htab: NonNull<HashMapSlot<K, V>>,
+    buckets: usize,
+    hash: H,
+    alloc: A,
+}
+
+unsafe impl<K: Send, V: Send, H: BuildHasher + Send, A: Allocator + Send> Send
+    for HashMap<K, V, H, A>
+{
+}
+unsafe impl<K: Sync, V: Sync, H: BuildHasher + Sync, A: Allocator + Sync> Sync
+    for HashMap<K, V, H, A>
+{
+}
+
+impl<K, V, H: BuildHasher, A: Allocator> Drop for HashMap<K, V, H, A> {
+    fn drop(&mut self) {
+        for i in 0..self.buckets {
+            let bucket = unsafe { &mut *self.htab.as_ptr().add(i) };
+            for i in 0..bucket.ecount {
+                unsafe { core::ptr::drop_in_place(bucket.entries[i].as_mut_ptr()) }
+            }
+        }
+
+        if self.buckets != 0 {
+            unsafe {
+                self.alloc.deallocate(
+                    self.htab.cast(),
+                    Layout::array::<HashMapSlot<K, V>>(self.buckets).unwrap(),
+                );
+            }
+        }
+    }
+}
+
+impl<K, V, H: BuildHasher + Default, A: Allocator + Default> HashMap<K, V, H, A> {
+    ///
+    /// Returns a new [`HashMap`] with defaults for both the hasher and the allocator, containing no entries
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            htab: NonNull::dangling(),
+            buckets: 0,
+            hash: Default::default(),
+            alloc: Default::default(),
+        }
+    }
+}
+
+impl<K, V, H: BuildHasher + Default, A: Allocator + Default> Default for HashMap<K, V, H, A> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<K, V, H: BuildHasher + Default, A: Allocator> HashMap<K, V, H, A> {
+    /// Returns a new [`HashMap`] with the given allocator and a default hasher, containing no entries.
+    pub fn new_in(alloc: A) -> Self {
+        Self {
+            htab: NonNull::dangling(),
+            buckets: 0,
+            hash: Default::default(),
+            alloc,
+        }
+    }
+}
+
+impl<K, V, H: BuildHasher, A: Allocator + Default> HashMap<K, V, H, A> {
+    /// Returns a new [`HashMap`] with the given hasher and a default alocator, containing no entries.
+    pub fn with_hasher(hash: H) -> Self {
+        Self {
+            htab: NonNull::dangling(),
+            buckets: 0,
+            hash,
+            alloc: Default::default(),
+        }
+    }
+}
+
+impl<K, V, H: BuildHasher, A: Allocator> HashMap<K, V, H, A> {
+    /// Returns a new [`HashMap`] with the given hasher and allocator, containing no entries
+    pub fn with_hasher_in(hash: H, alloc: A) -> Self {
+        Self {
+            htab: NonNull::dangling(),
+            buckets: 0,
+            hash,
+            alloc,
+        }
+    }
+
+    /// Produces an [`Iterator`] over pairs of keys and values in this [`HashMap`]
+    pub fn iter(&self) -> Iter<'_, K, V> {
+        Iter(
+            unsafe { core::slice::from_raw_parts(self.htab.as_ptr(), self.buckets) }.iter(),
+            None,
+        )
+    }
+
+    /// Produces an [`Iterator`] over pairs of keys and mutable values in this [`HashMap`]
+    /// Note that they keys are not mutable, to avoid mutation that would affect the implementation of [`Eq`] and [`Hash`]
+    pub fn iter_mut(&mut self) -> IterMut<'_, K, V> {
+        let begin = self.htab.as_ptr();
+        let end = unsafe { begin.add(self.buckets) };
+        IterMut {
+            buckets: begin,
+            buckets_end: end,
+            bucket_position: 0,
+            phantom: PhantomData,
+        }
+    }
+
+    /// Produces an [`Iterator`] over the values in this [`HashMap`]
+    pub fn values(&self) -> Values<'_, K, V> {
+        Values(self.iter())
+    }
+
+    /// Produces an [`Iterator`] over the keys in this [`HashMap`]
+    pub fn keys(&self) -> Keys<'_, K, V> {
+        Keys(self.iter())
+    }
+}
+
+impl<K: Eq + Hash, V, H: BuildHasher, A: Allocator> HashMap<K, V, H, A> {
+    #[allow(clippy::similar_names)]
+    fn rehash(&mut self) {
+        let ocount = self.buckets;
+        let ncount = self.buckets * 2;
+        assert!(
+            ncount <= (core::isize::MAX as usize),
+            "We have too many buckets, bail before we maybe cause UB"
+        );
+
+        let ptr = self
+            .alloc
+            .allocate_zeroed(Layout::array::<HashMapSlot<K, V>>(ncount).unwrap())
+            .unwrap_or_else(|_| {
+                alloc::alloc::handle_alloc_error(Layout::array::<HashMapSlot<K, V>>(16).unwrap())
+            });
+        let ptr = core::mem::replace(&mut self.htab, ptr.cast());
+        self.buckets = ncount;
+
+        for i in 0..self.buckets {
+            let bucket = unsafe { &mut *ptr.as_ptr().add(i) };
+            for i in 0..bucket.ecount {
+                let (key, value) = unsafe { bucket.entries[i].as_ptr().read() };
+                self.insert(key, value).unwrap();
+            }
+        }
+        unsafe {
+            self.alloc.deallocate(
+                ptr.cast(),
+                Layout::array::<HashMapSlot<K, V>>(ocount).unwrap(),
+            );
+        }
+    }
+
+    ///
+    /// Inserts `value` into the map with `key`, returning the existing value in the slot if present
+    #[allow(clippy::cast_possible_truncation, clippy::missing_panics_doc)]
+    pub fn insert(&mut self, key: K, value: V) -> Option<V> {
+        if self.buckets == 0 {
+            let ptr = self
+                .alloc
+                .allocate_zeroed(Layout::array::<HashMapSlot<K, V>>(16).unwrap())
+                .unwrap_or_else(|_| {
+                    alloc::alloc::handle_alloc_error(
+                        Layout::array::<HashMapSlot<K, V>>(16).unwrap(),
+                    )
+                });
+            self.htab = ptr.cast();
+            self.buckets = 16;
+        }
+        loop {
+            let mut hasher = self.hash.build_hasher();
+            key.hash(&mut hasher);
+            let hash = hasher.finish() as usize % self.buckets;
+            // SAFETY:
+            // htab is as long as the number of available buckets, thus this offset is guaranteed to be valid
+            let bucket = unsafe { &mut *self.htab.as_ptr().add(hash) };
+            for i in 0..bucket.ecount {
+                // SAFETY:
+                // bucket.ecount never exceeds 16, by the check following this loop
+                let key_val = unsafe { &mut *bucket.entries.get_unchecked_mut(i).as_mut_ptr() };
+
+                if key_val.0.eq(&key) {
+                    return Some(core::mem::replace(&mut key_val.1, value));
+                }
+            }
+
+            if bucket.ecount == 16 {
+                self.rehash();
+                continue;
+            }
+            // SAFETY:
+            // This is literally MaybeUninit::write, but valid in 1.39
+            // TODO: Change this to MaybeUninit::write, since we are no longer in 1.39
+            unsafe {
+                bucket.entries[bucket.ecount]
+                    .as_mut_ptr()
+                    .write((key, value));
+            }
+            bucket.ecount += 1;
+            return None;
+        }
+    }
+
+    /// Returns a mutable reference to the value with the given key, inserting `value` in that slot if necessary
+    #[allow(clippy::cast_possible_truncation, clippy::missing_panics_doc)]
+    pub fn get_or_insert_mut(&mut self, key: K, value: V) -> &mut V {
+        if self.buckets == 0 {
+            let ptr = self
+                .alloc
+                .allocate_zeroed(Layout::array::<HashMapSlot<K, V>>(16).unwrap())
+                .unwrap_or_else(|_| {
+                    alloc::alloc::handle_alloc_error(
+                        Layout::array::<HashMapSlot<K, V>>(16).unwrap(),
+                    )
+                });
+            self.htab = ptr.cast();
+            self.buckets = 16;
+        }
+        loop {
+            let mut hasher = self.hash.build_hasher();
+            key.hash(&mut hasher);
+            let hash = hasher.finish() as usize % self.buckets;
+            // SAFETY:
+            // htab is as long as the number of available buckets, thus this offset is guaranteed to be valid
+            let bucket = unsafe { &mut *self.htab.as_ptr().add(hash) };
+            for i in 0..bucket.ecount {
+                // SAFETY:
+                // bucket.ecount never exceeds 16, by the check following this loop
+                let key_val = unsafe { &mut *bucket.entries.get_unchecked_mut(i).as_mut_ptr() };
+
+                if key_val.0.eq(&key) {
+                    return &mut key_val.1;
+                }
+            }
+
+            if bucket.ecount == 16 {
+                self.rehash();
+                continue;
+            }
+            // SAFETY:
+            // This is literally MaybeUninit::write, but valid in 1.39
+            // TODO: Change this to MaybeUninit::write, since we're no longer bound to 1.39
+            unsafe {
+                bucket.entries[bucket.ecount]
+                    .as_mut_ptr()
+                    .write((key, value));
+            }
+            bucket.ecount += 1;
+            return &mut unsafe { &mut *bucket.entries[bucket.ecount - 1].as_mut_ptr() }.1;
+        }
+    }
+
+    /// Returns a mutable reference to the value with the given key, inserting the value produced by `value`
+    #[allow(clippy::cast_possible_truncation, clippy::missing_panics_doc)]
+    pub fn get_or_insert_with_mut<F: FnOnce(&K) -> V>(&mut self, key: K, value: F) -> &mut V {
+        if self.buckets == 0 {
+            let ptr = self
+                .alloc
+                .allocate_zeroed(Layout::array::<HashMapSlot<K, V>>(16).unwrap()) //
+                .unwrap_or_else(|_| {
+                    alloc::alloc::handle_alloc_error(
+                        Layout::array::<HashMapSlot<K, V>>(16).unwrap(),
+                    )
+                });
+            self.htab = ptr.cast();
+            self.buckets = 16;
+        }
+        loop {
+            let mut hasher = self.hash.build_hasher();
+            key.hash(&mut hasher);
+            let hash = hasher.finish() as usize % self.buckets;
+            // SAFETY:
+            // htab is as long as the number of available buckets, thus this offset is guaranteed to be valid
+            let bucket = unsafe { &mut *self.htab.as_ptr().add(hash) };
+            for i in 0..bucket.ecount {
+                // SAFETY:
+                // bucket.ecount never exceeds 16, by the check following this loop
+                let key_val = unsafe { &mut *bucket.entries.get_unchecked_mut(i).as_mut_ptr() };
+
+                if key_val.0.eq(&key) {
+                    return &mut key_val.1;
+                }
+            }
+
+            if bucket.ecount == 16 {
+                self.rehash();
+                continue;
+            }
+            // SAFETY:
+            // This is literally MaybeUninit::write, but valid in 1.39
+            // TODO: Change this to MaybeUninit::write, since we're no longer bound to 1.39
+            let value = value(&key);
+            unsafe {
+                bucket.entries[bucket.ecount]
+                    .as_mut_ptr()
+                    .write((key, value));
+            }
+            bucket.ecount += 1;
+            return &mut unsafe { &mut *bucket.entries[bucket.ecount - 1].as_mut_ptr() }.1;
+        }
+    }
+
+    /// Gets an immutable reference to the value given by `key`, if present, otherwise returns `None`.
+    #[allow(clippy::cast_possible_truncation)]
+    pub fn get<Q: ?Sized + Hash + Eq>(&self, key: &Q) -> Option<&V>
+    where
+        K: Borrow<Q>,
+    {
+        if self.buckets == 0 {
+            return None;
+        }
+        let mut hasher = self.hash.build_hasher();
+        key.hash(&mut hasher);
+        let hash = hasher.finish() as usize % self.buckets;
+
+        let bucket = unsafe { &mut *self.htab.as_ptr().add(hash) };
+        for i in 0..bucket.ecount {
+            // SAFETY:
+            // bucket.ecount never exceeds 16, by the check following this loop
+            let key_val = unsafe { &*bucket.entries.get_unchecked_mut(i).as_mut_ptr() };
+
+            if key_val.0.borrow().eq(key) {
+                return Some(&key_val.1);
+            }
+        }
+
+        None
+    }
+
+    /// Gets a mutable reference to the value given by `key`, if present, otherwise returns `None`.
+    #[allow(clippy::cast_possible_truncation)]
+    pub fn get_mut<Q: ?Sized + Hash + Eq>(&mut self, key: &Q) -> Option<&mut V>
+    where
+        K: Borrow<Q>,
+    {
+        if self.buckets == 0 {
+            return None;
+        }
+        let mut hasher = self.hash.build_hasher();
+        key.hash(&mut hasher);
+        let hash = hasher.finish() as usize % self.buckets;
+
+        let bucket = unsafe { &mut *self.htab.as_ptr().add(hash) };
+        for i in 0..bucket.ecount {
+            // SAFETY:
+            // bucket.ecount never exceeds 16, by the check following this loop
+            let key_val = unsafe { &mut *bucket.entries.get_unchecked_mut(i).as_mut_ptr() };
+
+            if key_val.0.borrow().eq(key) {
+                return Some(&mut key_val.1);
+            }
+        }
+
+        None
+    }
+
+    /// Removes an entry by Key from this map, and returns the Key and Value
+    #[allow(clippy::cast_possible_truncation)]
+    pub fn remove<Q: ?Sized + Hash + Eq>(&mut self, key: &Q) -> Option<(K, V)>
+    where
+        K: Borrow<Q>,
+    {
+        if self.buckets == 0 {
+            return None;
+        }
+
+        let mut hasher = self.hash.build_hasher();
+        key.hash(&mut hasher);
+        let hash = hasher.finish() as usize % self.buckets;
+
+        let bucket = unsafe { &mut *self.htab.as_ptr().add(hash) };
+
+        for i in 0..bucket.ecount {
+            // SAFETY:
+            // bucket.ecount never exceeds 16, by the check following this loop
+            let key_val = unsafe { &mut *bucket.entries.get_unchecked_mut(i).as_mut_ptr() };
+
+            if key_val.0.borrow().eq(key) {
+                let val = unsafe { core::ptr::read(key_val) };
+                for j in i..(bucket.ecount - 1) {
+                    unsafe {
+                        core::ptr::write(
+                            bucket.entries.as_mut_ptr().add(j),
+                            core::ptr::read(bucket.entries.as_mut_ptr().add(j + 1)),
+                        );
+                    }
+                }
+                return Some(val);
+            }
+        }
+        None
+    }
+}
+
+impl<K: Clone, V: Clone, H: BuildHasher + Clone, A: Allocator + Clone> Clone
+    for HashMap<K, V, H, A>
+{
+    #[allow(clippy::similar_names)]
+    fn clone(&self) -> Self {
+        let buckets = self.buckets;
+        let hash = self.hash.clone();
+        let alloc = self.alloc.clone();
+        let htab = alloc
+            .allocate_zeroed(Layout::array::<HashMapSlot<K, V>>(buckets).unwrap())
+            .unwrap()
+            .cast::<HashMapSlot<K, V>>();
+        let ptr = htab.as_ptr();
+        for i in 0..buckets {
+            let bucket = unsafe { &mut *ptr.add(i) };
+            let obucket = unsafe { &*self.htab.as_ptr().add(i) };
+            for j in 0..obucket.ecount {
+                unsafe {
+                    bucket.entries[j]
+                        .as_mut_ptr()
+                        .write((&*obucket.entries[j].as_ptr()).clone());
+                }
+            }
+        }
+        Self {
+            htab,
+            buckets,
+            hash,
+            alloc,
+        }
+    }
+}
+
+/// An [`Iterator`] over the keys and values of a [`HashMap`]
+pub struct Iter<'a, K, V>(
+    core::slice::Iter<'a, HashMapSlot<K, V>>,
+    Option<(&'a HashMapSlot<K, V>, usize)>,
+);
+
+impl<'a, K, V> Iter<'a, K, V> {
+    fn current_slot(&mut self) -> core::option::Option<(&'a HashMapSlot<K, V>, usize)> {
+        if let Some((slot, offset)) = self.1 {
+            Some((slot, offset))
+        } else {
+            let x = self.0.next()?;
+            self.1 = Some((x, 0));
+            Some((x, 0))
+        }
+    }
+}
+
+#[allow(clippy::borrow_as_ptr)]
+impl<'a, K, V> Iterator for Iter<'a, K, V> {
+    type Item = &'a (K, V);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let (mut slot, mut offset) = self.current_slot()?;
+
+        while offset == slot.ecount {
+            slot = self.0.next()?;
+            offset = 0;
+            self.1 = Some((slot, 0));
+        }
+        self.1.as_mut().unwrap().1 += 1;
+        Some(unsafe { &*(&slot.entries[offset] as *const MaybeUninit<(K, V)>).cast::<(K, V)>() })
+    }
+}
+
+/// An [`Iterator`] over the values of a [`HashMap`]
+pub struct Values<'a, K, V>(Iter<'a, K, V>);
+
+impl<'a, K, V> Iterator for Values<'a, K, V> {
+    type Item = &'a V;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.0.next() {
+            Some((_, v)) => Some(v),
+            None => None,
+        }
+    }
+}
+
+/// An [`Iterator`] over the keys of a [`HashMap`]
+pub struct Keys<'a, K, V>(Iter<'a, K, V>);
+
+impl<'a, K, V> Iterator for Keys<'a, K, V> {
+    type Item = &'a K;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.0.next() {
+            Some((k, _)) => Some(k),
+            None => None,
+        }
+    }
+}
+
+impl<'a, K, V, H: BuildHasher, A: Allocator> IntoIterator for &'a HashMap<K, V, H, A> {
+    type Item = &'a (K, V);
+
+    type IntoIter = Iter<'a, K, V>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
+impl<'a, K, V, H: BuildHasher, A: Allocator> IntoIterator for &'a mut HashMap<K, V, H, A> {
+    type Item = (&'a K, &'a mut V);
+
+    type IntoIter = IterMut<'a, K, V>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter_mut()
+    }
+}
+
+impl<'a, K: Hash, V: Hash, H: BuildHasher, A: Allocator> Hash for HashMap<K, V, H, A> {
+    fn hash<P: Hasher>(&self, state: &mut P) {
+        for i in self {
+            i.hash(state);
+        }
+    }
+}
+
+impl<'a, K: Debug, V: Debug, H: BuildHasher, A: Allocator> Debug for HashMap<K, V, H, A> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_map()
+            .entries(self.iter().map(|(k, v)| (k, v)))
+            .finish()
+    }
+}
+
+impl<'a, K: Eq + Hash, V, Q: Eq + Hash + 'a, H: BuildHasher, A: Allocator> Index<&'a Q>
+    for HashMap<K, V, H, A>
+where
+    K: Borrow<Q>,
+{
+    type Output = V;
+    fn index(&self, idx: &'a Q) -> &V {
+        self.get(idx).unwrap()
+    }
+}
+
+impl<K: Eq + Hash, V: PartialEq, H: BuildHasher, A: Allocator> PartialEq for HashMap<K, V, H, A> {
+    fn eq(&self, other: &Self) -> bool {
+        if core::ptr::eq(self, other) {
+            return true;
+        }
+        for (k, v) in self {
+            if other.get(k).map_or(false, |v2| v.eq(v2)) {
+                return false;
+            }
+        }
+        for (k, v) in other {
+            if self.get(k).map_or(false, |v2| v.eq(v2)) {
+                return false;
+            }
+        }
+
+        true
+    }
+}
+
+impl<K: Eq + Hash, V: Eq, H: BuildHasher, A: Allocator> Eq for HashMap<K, V, H, A> {}
+
+impl<K: Eq + Hash, V, H: BuildHasher + Default, A: Allocator + Default> FromIterator<(K, V)>
+    for HashMap<K, V, H, A>
+{
+    fn from_iter<I>(it: I) -> Self
+    where
+        I: IntoIterator<Item = (K, V)>,
+    {
+        let mut ret = Self::new();
+        for (k, v) in it {
+            ret.insert(k, v);
+        }
+        ret
+    }
+}
+
+impl<K: Eq + Hash, V, H: BuildHasher, A: Allocator> Extend<(K, V)> for HashMap<K, V, H, A> {
+    fn extend<I>(&mut self, it: I)
+    where
+        I: IntoIterator<Item = (K, V)>,
+    {
+        for (k, v) in it {
+            self.insert(k, v);
+        }
+    }
+}
+
+/// An [`Iterator`] over the keys and mutable values of a [`HashMap`].
+pub struct IterMut<'a, K, V> {
+    buckets: *mut HashMapSlot<K, V>,
+    buckets_end: *mut HashMapSlot<K, V>,
+    bucket_position: usize,
+    phantom: PhantomData<&'a mut [HashMapSlot<K, V>]>,
+}
+
+impl<'a, K, V> IterMut<'a, K, V> {
+    fn next_item(&mut self) -> Option<&'a mut (K, V)> {
+        if self.buckets == self.buckets_end {
+            None
+        } else {
+            let mut ecount = unsafe { (*self.buckets).ecount };
+            let mut entries =
+                unsafe { core::ptr::addr_of_mut!((*self.buckets).entries) }.cast::<(K, V)>();
+
+            while self.bucket_position >= ecount {
+                self.bucket_position = 0;
+                self.buckets = unsafe { self.buckets.offset(1) };
+                if self.buckets == self.buckets_end {
+                    return None;
+                }
+                ecount = unsafe { (*self.buckets).ecount };
+                entries =
+                    unsafe { core::ptr::addr_of_mut!((*self.buckets).entries) }.cast::<(K, V)>();
+            }
+
+            let ret = unsafe { entries.add(self.bucket_position) };
+            self.bucket_position += 1;
+
+            Some(unsafe { &mut *ret })
+        }
+    }
+}
+
+impl<'a, K, V> Iterator for IterMut<'a, K, V> {
+    type Item = (&'a K, &'a mut V);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.next_item().map(|(k, v)| (k as &K, v))
+    }
+}
+
+impl<'a, K, V> FusedIterator for IterMut<'a, K, V> {}
+
+/// An [`Iterator`] over the mutable values in a [`HashMap`]
+pub struct ValuesMut<'a, K, V>(IterMut<'a, K, V>);
+
+impl<'a, K, V> Iterator for ValuesMut<'a, K, V> {
+    type Item = &'a mut V;
+
+    fn next(&mut self) -> Option<&'a mut V> {
+        self.0.next().map(|(_, v)| v)
+    }
+}
+
+///
+/// A [`HashSet`] that has a stable ABI and obtains storage backed by an [`Allocator`]
+#[derive(Clone /* may not be good to derive(Debug) here. Maybe should provide impl instead */)]
+pub struct HashSet<K, H: BuildHasher = BuildHasherDefault<XLangHasher>, A: Allocator = Global> {
+    inner: HashMap<K, (), H, A>,
+}
+
+impl<K: Debug, H: BuildHasher, A: Allocator> core::fmt::Debug for HashSet<K, H, A> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_set().entries(self).finish()
+    }
+}
+
+impl<K: Eq + Hash, H: BuildHasher, A: Allocator> PartialEq for HashSet<K, H, A> {
+    fn eq(&self, other: &Self) -> bool {
+        self.inner == other.inner
+    }
+}
+
+impl<K: Eq + Hash, H: BuildHasher, A: Allocator> Eq for HashSet<K, H, A> {}
+
+impl<K: Eq + Hash, H: BuildHasher, A: Allocator> Hash for HashSet<K, H, A> {
+    fn hash<Hash: Hasher>(&self, hasher: &mut Hash) {
+        self.inner.hash(hasher);
+    }
+}
+
+impl<K, H: BuildHasher + Default, A: Allocator + Default> HashSet<K, H, A> {
+    /// Constructs a new [`HashSet`] with a [`Default`] allocator and [`Default`] hasher
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            inner: HashMap::new(),
+        }
+    }
+}
+
+impl<K, H: BuildHasher + Default, A: Allocator + Default> Default for HashSet<K, H, A> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<K, H: BuildHasher, A: Allocator + Default> HashSet<K, H, A> {
+    /// Constructs a new [`HashSet`] with the given hasher and a [`Default`] allocator
+    #[must_use]
+    pub fn with_hasher(hasher: H) -> Self {
+        Self {
+            inner: HashMap::with_hasher(hasher),
+        }
+    }
+}
+
+impl<K, H: BuildHasher + Default, A: Allocator> HashSet<K, H, A> {
+    /// Constructs a new [`HashSet`] with the given allocator and a [`Default`] hasher
+    #[must_use]
+    pub fn new_in(alloc: A) -> Self {
+        Self {
+            inner: HashMap::new_in(alloc),
+        }
+    }
+}
+
+impl<K, H: BuildHasher, A: Allocator> HashSet<K, H, A> {
+    /// Constructs a new [`HashSet`] with the given hasher and allocator
+    #[must_use]
+    pub fn with_hasher_in(hasher: H, alloc: A) -> Self {
+        Self {
+            inner: HashMap::with_hasher_in(hasher, alloc),
+        }
+    }
+
+    /// Produces an [`Iterator`] over each element of the set
+    pub fn iter(&self) -> SetIter<'_, K> {
+        SetIter(self.inner.keys())
+    }
+}
+
+impl<K: Eq + Hash, H: BuildHasher, A: Allocator> HashSet<K, H, A> {
+    ///
+    /// Checks if `self` contains the given val.
+    pub fn contains<Q: ?Sized + Hash + Eq>(&self, val: &Q) -> bool
+    where
+        K: Borrow<Q>,
+    {
+        self.inner.get(val).is_some()
+    }
+
+    ///
+    /// Inserts `val` into the set if it is not already present (according to the [`Eq`] implementation), or returns it (as an Err) instead.
+    #[allow(clippy::missing_errors_doc)] // Not an Error to return the `K`
+    pub fn insert(&mut self, val: K) -> Result<(), K> {
+        if self.inner.get(&val).is_some() {
+            Err(val)
+        } else {
+            self.inner.insert(val, ());
+            Ok(())
+        }
+    }
+
+    /// Removes a value from the set and returns it if present
+    pub fn remove<Q: ?Sized + Hash + Eq>(&mut self, val: &Q) -> Option<K>
+    where
+        K: Borrow<Q>,
+    {
+        self.inner.remove(val).map(|(k, _)| k)
+    }
+}
+impl<K: Eq + Hash, H: BuildHasher + Default, A: Allocator + Default> FromIterator<K>
+    for HashSet<K, H, A>
+{
+    fn from_iter<I>(iter: I) -> Self
+    where
+        I: IntoIterator<Item = K>,
+    {
+        let mut out = Self::new();
+        for item in iter {
+            drop(out.insert(item));
+        }
+        out
+    }
+}
+
+impl<K: Eq + Hash, H: BuildHasher + Default, A: Allocator + Default> Extend<K>
+    for HashSet<K, H, A>
+{
+    fn extend<I>(&mut self, iter: I)
+    where
+        I: IntoIterator<Item = K>,
+    {
+        for item in iter {
+            drop(self.insert(item));
+        }
+    }
+}
+
+/// Creates a [`HashSet`] from given elements, discarding duplicates
+#[macro_export]
+macro_rules! set{
+    {$($expr:expr),*} => {{
+        let __array = [$($expr),*];
+        $crate::collection::HashSet::from_iter(::core::iter::IntoIterator::into_iter(__array))
+    }}
+}
+
+/// An [`Iterator`] over the values in a [`HashSet`]
+pub struct SetIter<'a, K>(Keys<'a, K, ()>);
+
+impl<'a, K> Iterator for SetIter<'a, K> {
+    type Item = &'a K;
+
+    fn next(&mut self) -> Option<&'a K> {
+        self.0.next()
+    }
+}
+
+impl<'a, K: 'a, H: BuildHasher, A: Allocator> IntoIterator for &'a HashSet<K, H, A> {
+    type Item = &'a K;
+    type IntoIter = SetIter<'a, K>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
