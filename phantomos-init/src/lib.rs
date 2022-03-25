@@ -1,5 +1,6 @@
 #![no_std]
 #![feature(const_ptr_offset)]
+#![feature(core_ffi_c)]
 #![feature(default_alloc_error_handler)]
 #![feature(panic_info_message)]
 
@@ -33,9 +34,9 @@ mod stivale_setup {
     use stivale_boot::v2::{StivaleHeader, StivaleTerminalHeaderTag};
 
     #[repr(C, align(16))]
-    struct Stack([u8; 1024*1024]);
+    struct Stack([u8; 1024 * 1024]);
 
-    static STACK: Stack = Stack([0; 1024*1024]);
+    static STACK: Stack = Stack([0; 1024 * 1024]);
     static TERMINAL_HEADER_TAG: StivaleTerminalHeaderTag = StivaleTerminalHeaderTag::new().flags(0);
 
     #[link_section = ".stivale2hdr"]
@@ -365,9 +366,10 @@ unsafe extern "C" fn main(stivale_data: *const StivaleStruct) -> ! {
     writeln!(term(), "Setting up interrupts... done").unwrap();
 
     writeln!(term(), "Reading device list...").unwrap();
-    let rsdp: RsdpDescriptor = *bytemuck::cast_ref(&*(stivale_data.rsdp().unwrap().rsdp as *const [u8; 36]));
+    let rsdp: RsdpDescriptor =
+        *bytemuck::cast_ref(&*(stivale_data.rsdp().unwrap().rsdp as *const [u8; 36]));
     rsdp.validate();
-    writeln!(term(), "OEM ID: {}", rsdp.oemid()).unwrap();
+    writeln!(term(), "OEM ID: {}", rsdp.oem_id()).unwrap();
 
     let boot_volume = stivale_data
         .boot_volume()
