@@ -2,6 +2,7 @@
 #![feature(const_ptr_offset)]
 #![feature(core_ffi_c)]
 #![feature(default_alloc_error_handler)]
+#![feature(once_cell)]
 #![feature(panic_info_message)]
 
 #[cfg(target_arch = "x86_64")]
@@ -24,9 +25,10 @@ extern crate paste;
 use acpi::RsdpDescriptor;
 use core::arch::global_asm;
 use core::fmt::Write;
+use core::lazy::OnceCell;
 use core::mem::MaybeUninit;
 use elf::{Elf64Dyn, Elf64Rela};
-use stivale_boot::v2::StivaleStruct;
+use stivale_boot::v2::{StivaleMemoryMapTag, StivaleStruct};
 use uuid::Uuid;
 use writer::TerminalWriter;
 
@@ -71,6 +73,7 @@ _start:
 );
 
 static mut TERMINAL: MaybeUninit<TerminalWriter> = MaybeUninit::uninit();
+static MEMORY_MAP: OnceCell<&StivaleMemoryMapTag> = OnceCell::new();
 
 fn term<'a>() -> &'a mut TerminalWriter<'static> {
     // This is actually unsound wrt interrupts, but that's not a problem yet.
@@ -364,6 +367,9 @@ unsafe extern "C" fn main(stivale_data: *const StivaleStruct) -> ! {
     writeln!(term(), "Setting up interrupts...").unwrap();
     register_idt();
     writeln!(term(), "Setting up interrupts... done").unwrap();
+
+    // SAFETY: we are the first people to call set.
+    unsafe { MEMORY_MAP.set(stivale_data.memory_map().unwrap()).unwrap_unchecked() };
 
     let boot_volume = stivale_data
         .boot_volume()
