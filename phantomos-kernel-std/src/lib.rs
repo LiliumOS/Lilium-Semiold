@@ -10,6 +10,7 @@ pub mod str;
 pub mod sync;
 
 #[cfg(target_arch = "x86_64")]
+#[macro_export]
 macro_rules! has_x86_feature {
     ($feature:literal) => {
         extern "C" {
