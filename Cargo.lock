@@ -29,6 +29,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "fake-enum"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "185b4cd26aff3789b8662aa73732b585d46b9756cd3c6b302be72f68302c5eba"
+
+[[package]]
 name = "paste"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -38,6 +44,9 @@ checksum = "0744126afe1a6dd7f394cb50a716dbe086cb06e255e53d8d0185d82828358fb5"
 name = "phantom-filesystem-drivers"
 version = "0.1.0"
 dependencies = [
+ "bitflags",
+ "bytemuck",
+ "fake-enum",
  "std",
 ]
 
