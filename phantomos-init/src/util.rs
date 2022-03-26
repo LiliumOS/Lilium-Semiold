@@ -1,5 +1,5 @@
-use core::fmt::Write;
 use crate::MEMORY_MAP;
+use core::fmt::Write;
 use std::io::{Read, Seek};
 
 pub trait ReadSeek: Read + Seek {}

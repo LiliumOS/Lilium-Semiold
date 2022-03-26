@@ -1,6 +1,6 @@
+use crate::util::ToVirtual;
 use bytemuck::{Pod, Zeroable};
 use core::fmt::{self, Debug, Write};
-use crate::util::ToVirtual;
 
 #[derive(Clone, Copy, Hash, Pod, Zeroable)]
 #[repr(C, packed)]
@@ -95,7 +95,9 @@ impl Xsdt {
         let raw: &'static XsdtRaw = &*(loc as *const XsdtRaw);
         let header: &'static AcpiSdtHeader = &raw.header;
         let sdt_list = core::slice::from_raw_parts(
-            (&raw.sdt_list as *const _ as *const AcpiSdtPointer).to_virtual().unwrap(),
+            (&raw.sdt_list as *const _ as *const AcpiSdtPointer)
+                .to_virtual()
+                .unwrap(),
             (header.length as usize - core::mem::size_of::<AcpiSdtHeader>()) / 8,
         );
         Xsdt { header, sdt_list }

@@ -18,6 +18,11 @@ impl<'a> TerminalWriter<'a> {
 impl Write for TerminalWriter<'_> {
     fn write_str(&mut self, s: &str) -> Result<(), Error> {
         self.internal.term_write()(s);
+        for c in s.bytes() {
+            unsafe {
+                core::arch::asm!("out 0xe9, {0}", in(reg_byte) c);
+            }
+        }
         Ok(())
     }
 }
