@@ -404,12 +404,12 @@ unsafe extern "C" fn main(stivale_data: *const StivaleStruct) -> ! {
 
     writeln!(term(), "Determining CPU Feature Set... {:?}", features).unwrap();
 
-    writeln!(term(), "Reading device list...").unwrap();
-    let rsdp: RsdpDescriptor =
-        *bytemuck::cast_ref(&*(stivale_data.rsdp().unwrap().rsdp as *const [u8; 36]));
-    rsdp.validate();
-    writeln!(term(), "OEM ID: {}", rsdp.oem_id()).unwrap();
-    writeln!(term(), "XSDT: {:?}", rsdp.xsdt()).unwrap();
+    // writeln!(term(), "Reading device list...").unwrap();
+    // let rsdp: RsdpDescriptor =
+    //     *bytemuck::cast_ref(&*(stivale_data.rsdp().unwrap().rsdp as *const [u8; 36]));
+    // rsdp.validate();
+    // writeln!(term(), "OEM ID: {}", rsdp.oem_id()).unwrap();
+    // writeln!(term(), "XSDT: {:?}", rsdp.xsdt()).unwrap();
 
     loop {}
 }
