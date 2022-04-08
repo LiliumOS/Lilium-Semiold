@@ -57,15 +57,15 @@ function build_iso {
     mkdir -p build-iso/boot
     cp -v $INIT_PATH build-iso/phantomos.elf
     cp -v limine-iso.cfg build-iso/limine.cfg
-    cp -v build-limine/bin/{limine-eltorito-efi.bin,limine-cd.bin,limine.sys} build-iso/boot/
+    cp -v build-limine/bin/{limine-cd-efi.bin,limine-cd.bin,limine.sys} build-iso/boot/
 
     xorriso -as mkisofs -b boot/limine-cd.bin \
         -no-emul-boot -boot-load-size 4 -boot-info-table \
-        --efi-boot boot/limine-eltorito-efi.bin \
+        --efi-boot boot/limine-cd-efi.bin \
         -efi-boot-part --efi-boot-image --protective-msdos-label \
         build-iso -o phantomos.iso || error "ISO build failed"
 
-    build-limine/bin/limine-install phantomos.iso || error "limine install failed"
+    build-limine/bin/limine-deploy phantomos.iso || error "limine deploy failed"
 
     echo $status ISO image successfully built
 }
