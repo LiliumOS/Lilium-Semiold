@@ -1,3 +1,5 @@
+use alloc::string::String;
+
 pub enum SeekFrom {
     Start(u64),
     End(i64),
@@ -12,6 +14,7 @@ pub enum Error {
     // Every io operation is currently infallible, yay!
     UnexpectedEof,
     Interrupted,
+    InvalidData(Option<String>),
 }
 
 impl core::fmt::Display for Error {
@@ -19,6 +22,11 @@ impl core::fmt::Display for Error {
         match self {
             Self::UnexpectedEof => f.write_str("Unexpected End of File"),
             Self::Interrupted => f.write_str("Operation Interrupted"),
+            Self::InvalidData(Some(info)) => {
+                f.write_str("Invalid data on stream:")?;
+                f.write_str(info)
+            }
+            Self::InvalidData(None) => f.write_str("Invalid data on stream"),
         }
     }
 }
@@ -71,6 +79,20 @@ impl<S: Seek> Seek for &mut S {
 pub trait Write {
     fn write(&mut self, buf: &[u8]) -> Result<usize>;
     fn flush(&mut self) -> Result<()>;
+
+    fn write_all(&mut self, mut buf: &[u8]) -> Result<()> {
+        while !buf.is_empty() {
+            match self.write(buf) {
+                Ok(0) => return Err(Error::UnexpectedEof),
+                Ok(n) => {
+                    buf = &buf[n..];
+                }
+                Err(Error::Interrupted) => {}
+                Err(e) => return Err(e),
+            }
+        }
+        Ok(())
+    }
 }
 
 impl<W: Write> Write for &mut W {

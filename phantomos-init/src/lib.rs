@@ -399,6 +399,24 @@ unsafe extern "C" fn main(stivale_data: *const StivaleStruct) -> ! {
     )
     .unwrap();
 
+    let mut brand: [[u32; 4]; 3] = Default::default();
+
+    writeln!(term(), "Determining CPU Brand string... ").unwrap();
+
+    if x86_64::cpuid(0x80000000, 0)[0] < 0x80000004 {
+        writeln!(term(), "Determining CPU Brand string... unknown").unwrap();
+    } else {
+        brand[0] = x86_64::cpuid(0x80000002, 0);
+        brand[1] = x86_64::cpuid(0x80000003, 0);
+        brand[2] = x86_64::cpuid(0x80000004, 0);
+        writeln!(
+            term(),
+            "Determining CPU Brand string... {}",
+            core::str::from_utf8(bytemuck::cast_slice(&brand)).unwrap()
+        )
+        .unwrap();
+    }
+
     writeln!(term(), "Determining CPU Feature Set... ").unwrap();
     let features = x86_64::features::get_x86_features();
 

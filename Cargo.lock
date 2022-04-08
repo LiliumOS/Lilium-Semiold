@@ -29,6 +29,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "crc-any"
+version = "2.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a3fc9f32c34de51ba0a727fd84d2cc83587efeca519cfca1105e3efa9c1c78fb"
+dependencies = [
+ "debug-helper",
+]
+
+[[package]]
+name = "debug-helper"
+version = "0.3.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f578e8e2c440e7297e008bb5486a3a8a194775224bbc23729b0dbdfaeebf162e"
+
+[[package]]
 name = "fake-enum"
 version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -46,6 +61,7 @@ version = "0.1.0"
 dependencies = [
  "bitflags",
  "bytemuck",
+ "crc-any",
  "fake-enum",
  "std",
 ]
