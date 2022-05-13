@@ -5,6 +5,7 @@ use core::iter::{FromIterator, FusedIterator};
 use core::marker::PhantomData;
 use core::mem::MaybeUninit;
 use core::ops::Index;
+use core::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::hash::XLangHasher;
 use alloc::alloc::{Allocator, Global, Layout};
@@ -829,3 +830,125 @@ impl<'a, K: 'a, H: BuildHasher, A: Allocator> IntoIterator for &'a HashSet<K, H,
         self.iter()
     }
 }
+
+pub struct RingBuffer<T, A: Allocator = Global> {
+    base: NonNull<T>,
+    capacity: usize,
+    write_head: AtomicUsize,
+    reserved_head: AtomicUsize,
+    read_head: AtomicUsize,
+    tail: AtomicUsize,
+    alloc: A,
+}
+
+impl<T> RingBuffer<T> {
+    pub fn with_capacity(cap: usize) -> Self {
+        Self::with_capacity_in(cap, Global)
+    }
+}
+
+impl<T, A: Allocator> RingBuffer<T, A> {
+    pub fn with_capacity_in(cap: usize, alloc: A) -> Self {
+        let base = alloc
+            .allocate_zeroed(
+                Layout::from_size_align(
+                    cap * core::mem::size_of::<T>(),
+                    core::mem::align_of::<T>(),
+                )
+                .unwrap(),
+            )
+            .unwrap()
+            .cast();
+
+        Self {
+            base,
+            capacity: cap,
+            alloc,
+            write_head: AtomicUsize::new(0),
+            reserved_head: AtomicUsize::new(0),
+            read_head: AtomicUsize::new(0),
+            tail: AtomicUsize::new(0),
+        }
+    }
+}
+
+impl<T, A: Allocator> Drop for RingBuffer<T, A> {
+    fn drop(&mut self) {
+        let layout = Layout::from_size_align(
+            self.capacity * core::mem::size_of::<T>(),
+            core::mem::align_of::<T>(),
+        )
+        .unwrap();
+        unsafe { self.alloc.deallocate(self.base.cast(), layout) }
+    }
+}
+
+impl<T: Copy, A: Allocator> RingBuffer<T, A> {
+    pub fn push(&self, val: T) -> Result<(), T> {
+        let mut write = self.reserved_head.load(Ordering::Acquire);
+        loop {
+            let next = (write + 1) % self.capacity;
+
+            if next == self.tail.load(Ordering::Acquire) {
+                return Err(val); // push failed
+            }
+
+            match self.reserved_head.compare_exchange_weak(
+                write,
+                next,
+                Ordering::Acquire,
+                Ordering::Relaxed,
+            ) {
+                Ok(pos) => {
+                    unsafe {
+                        self.base.as_ptr().add(pos).write(val);
+                    }
+                    while self.write_head.load(Ordering::Acquire) != write {
+                        core::hint::spin_loop()
+                    }
+                    self.write_head.swap(next, Ordering::Release); //  We swap here, instead of store, to carry the release chain forward.
+                    return Ok(());
+                }
+                Err(real) => {
+                    write = real;
+                }
+            }
+        }
+    }
+
+    pub fn pop(&self) -> Result<T, ()> {
+        let mut read = self.read_head.load(Ordering::Acquire);
+        loop {
+            let next = (read + 1) % self.capacity;
+
+            let write = self.write_head.load(Ordering::Relaxed);
+
+            if read == write {
+                return Err(());
+            }
+
+            match self.read_head.compare_exchange_weak(
+                read,
+                next,
+                Ordering::AcqRel,
+                Ordering::Relaxed,
+            ) {
+                Ok(pos) => {
+                    let val = unsafe { self.base.as_ptr().add(pos).read() };
+                    while self.tail.load(Ordering::Acquire) != write {
+                        core::hint::spin_loop()
+                    }
+                    self.read_head.swap(next, Ordering::Release);
+                    return Ok(val);
+                }
+                Err(real) => {
+                    read = real;
+                }
+            }
+        }
+    }
+}
+
+unsafe impl<T: Send, A: Allocator> Sync for RingBuffer<T, A> {}
+
+unsafe impl<T: Send, A: Allocator + Send> Send for RingBuffer<T, A> {}

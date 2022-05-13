@@ -5,6 +5,8 @@
 #![feature(once_cell)]
 #![feature(panic_info_message)]
 
+#[cfg(target_arch = "clever")]
+pub mod clever;
 #[cfg(target_arch = "x86_64")]
 pub mod x86_64;
 

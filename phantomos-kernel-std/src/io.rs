@@ -11,10 +11,11 @@ pub enum SeekFrom {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum Error {
-    // Every io operation is currently infallible, yay!
     UnexpectedEof,
     Interrupted,
     InvalidData(Option<String>),
+    NotADirectory,
+    NotFound,
 }
 
 impl core::fmt::Display for Error {
@@ -27,6 +28,8 @@ impl core::fmt::Display for Error {
                 f.write_str(info)
             }
             Self::InvalidData(None) => f.write_str("Invalid data on stream"),
+            Self::NotADirectory => f.write_str("Not a directory"),
+            Self::NotFound => f.write_str("No such file or directory"),
         }
     }
 }

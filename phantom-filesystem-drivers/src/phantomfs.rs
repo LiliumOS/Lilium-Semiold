@@ -3,7 +3,7 @@ use std::io::{self, Read, Seek, SeekFrom, Write};
 
 use bytemuck::{Pod, Zeroable};
 
-use crate::traits::{Search, StreamId};
+use crate::traits::{ReadFS, Search, StreamId};
 
 bitflags::bitflags! {
     #[derive(Default,Zeroable,Pod)]
@@ -142,20 +142,36 @@ bitflags::bitflags! {
 #[repr(C, align(64))]
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, Zeroable, Pod)]
 pub struct RootFSDescriptor {
+    /// The magic number of the filesystem
     magic: [u8; 4],
+    /// The major version.
     major: u32,
+    /// The minor version
     minor: u32,
+    /// The revision number
     revision: u32,
+    /// The partition id.
     partid: u128,
+    /// Filesystem features that are required to access this filesystem
     features: FSFeatures,
+    /// Filesystem features that are required to write to this filesystem, but optional when the filesystem is mounted for reading only
     rofeatures: FSROFeatures,
+    /// The sector that is one byte past the end of the object table
+    /// The object table grows downwards from this position
     objtab: u128,
+    /// The total size (in bytes) of the object table.
     objtabsize: u64,
+    /// The index (entry number) of the root object in the object table
+    /// If `0`, the the filesystem needs an object table created
     rootidx: u64,
+    /// An index in the root object's `Strings` stream that contains the name of this partion or `None`
     partnameidx: Option<NonZeroU64>,
+    /// The UTF-8 encoded string that contains the name of this partition if it up to 24 bytes in total (with zero in the remaining bytes).
     partname: [u8; 24],
     reserved112: [u8; 8],
+    /// The total size of the root descriptor
     descriptor_size: u32,
+    /// The CRC32 checksum of the complete descriptor
     descriptor_crc: u32,
 }
 
@@ -239,6 +255,72 @@ impl<S: Read + Seek> Search for PhantomFS<S> {
         let desc = self.get_or_read_descriptor()?;
 
         Ok(StreamId(None))
+    }
+}
+
+impl<S: Read + Seek> ReadFS for PhantomFS<S> {
+    fn read_bytes_from(
+        &mut self,
+        node: crate::traits::InodeId,
+        offset: u64,
+        bytes: &mut [u8],
+    ) -> std::io::Result<usize> {
+        let desc = self.get_or_read_descriptor()?;
+        let objtab = desc.objtab;
+        let obj: u64 = if let Some(obj) = node.0 .0 {
+            obj.get()
+        } else {
+            desc.rootidx
+        };
+
+        if obj > (desc.objtabsize / u64::try_from(core::mem::size_of::<PhantomFSObject>()).unwrap())
+        {
+            return Err(std::io::Error::NotFound);
+        }
+
+        let objtab = desc.objtab;
+
+        drop(desc); // ensure we don't use it again
+
+        self.stream.seek(SeekFrom::StartFar(objtab))?;
+        let objoffset: u64 = obj * u64::try_from(core::mem::size_of::<PhantomFSObject>()).unwrap();
+
+        let pos = -(objoffset as i64);
+        self.stream.seek(SeekFrom::Current(pos))?;
+
+        let mut obj: PhantomFSObject = Zeroable::zeroed();
+
+        self.stream.read_exact(bytemuck::bytes_of_mut(&mut obj))?;
+
+        let streamdisp = obj.streams_ref;
+
+        let indirect = obj.streams_indirection;
+
+        let streamslen = obj.streams_size;
+
+        let streampos = node.1 .0.ok_or(std::io::Error::NotFound)?.get();
+
+        if streampos >= (streamslen / u64::try_from(core::mem::size_of::<StreamListing>()).unwrap())
+        {
+            return Err(std::io::Error::NotFound);
+        }
+
+        if indirect == 0 {
+            return Err(std::io::Error::NotFound);
+        }
+
+        if indirect == 1 {
+            self.stream.seek(SeekFrom::StartFar(streamdisp))?;
+            let disp =
+                (streampos * u64::try_from(core::mem::size_of::<StreamListing>()).unwrap()) as i64;
+            self.stream.seek(SeekFrom::Current(disp))?;
+            let mut stream = StreamListing::zeroed();
+            self.stream
+                .read_exact(bytemuck::bytes_of_mut(&mut stream))?;
+        } else {
+        }
+
+        Err(std::io::Error::Interrupted)
     }
 }
 

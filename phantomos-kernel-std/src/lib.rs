@@ -1,8 +1,11 @@
 #![no_std]
-#![feature(allocator_api)]
+#![feature(allocator_api, const_maybe_uninit_zeroed)]
 
 extern crate alloc;
 
+pub use alloc::format;
+
+pub mod cell;
 pub mod collection;
 pub mod hash;
 pub mod io;
