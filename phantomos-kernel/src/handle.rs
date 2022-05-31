@@ -8,6 +8,8 @@ pub enum HandleType {
     IOHandle = 3,
 }
 
+/// # Safety
+/// TODO
 pub unsafe trait HandleKind {
     const TYPE: HandleType;
 }

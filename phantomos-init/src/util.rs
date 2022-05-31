@@ -19,38 +19,50 @@ impl<T> ToVirtual for *const T {
     }
 }
 
+/// # Safety
+/// TODO
 #[inline(always)]
 pub unsafe fn outb(port: u16, val: u8) {
     core::arch::asm!("out {0}, {1}", in(reg) port, in(reg_byte) val);
 }
 
+/// # Safety
+/// TODO
 #[inline(always)]
 pub unsafe fn outw(port: u16, val: u16) {
     core::arch::asm!("out {0}, {1}", in(reg) port, in(reg) val);
 }
 
+/// # Safety
+/// TODO
 #[inline(always)]
 pub unsafe fn outl(port: u16, val: u32) {
     core::arch::asm!("out {0}, {1}", in(reg) port, in(reg) val);
 }
 
+/// # Safety
+/// TODO
 #[inline(always)]
 pub unsafe fn inb(port: u16) -> u8 {
     let mut result;
-    core::arch::asm!("out {0}, {1}", in(reg) port, out(reg_byte) result);
+    core::arch::asm!("in {0}, {1}", in(reg) port, out(reg_byte) result);
     result
 }
 
+/// # Safety
+/// TODO
 #[inline(always)]
 pub unsafe fn inw(port: u16) -> u16 {
     let mut result;
-    core::arch::asm!("out {0}, {1}", in(reg) port, out(reg) result);
+    core::arch::asm!("in {0}, {1}", in(reg) port, out(reg) result);
     result
 }
 
+/// # Safety
+/// TODO
 #[inline(always)]
 pub unsafe fn inl(port: u16) -> u32 {
     let mut result;
-    core::arch::asm!("out {0}, {1}", in(reg) port, out(reg) result);
+    core::arch::asm!("in {0}, {1}", in(reg) port, out(reg) result);
     result
 }

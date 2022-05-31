@@ -241,18 +241,18 @@ impl<S: Read + Seek> PhantomFS<S> {
 impl<S: Read + Seek> Search for PhantomFS<S> {
     fn get_object_from(
         &mut self,
-        pos: crate::traits::InodeId,
-        pname: std::str::StringView,
+        _pos: crate::traits::InodeId,
+        _pname: std::str::StringView,
     ) -> std::io::Result<crate::traits::ObjectId> {
         todo!()
     }
 
     fn get_stream_of_object(
         &mut self,
-        obj: crate::traits::ObjectId,
-        lname: std::str::StringView,
+        _obj: crate::traits::ObjectId,
+        _lname: std::str::StringView,
     ) -> std::io::Result<crate::traits::StreamId> {
-        let desc = self.get_or_read_descriptor()?;
+        let _desc = self.get_or_read_descriptor()?;
 
         Ok(StreamId(None))
     }
@@ -262,11 +262,11 @@ impl<S: Read + Seek> ReadFS for PhantomFS<S> {
     fn read_bytes_from(
         &mut self,
         node: crate::traits::InodeId,
-        offset: u64,
-        bytes: &mut [u8],
+        _offset: u64,
+        _bytes: &mut [u8],
     ) -> std::io::Result<usize> {
         let desc = self.get_or_read_descriptor()?;
-        let objtab = desc.objtab;
+        let _objtab = desc.objtab;
         let obj: u64 = if let Some(obj) = node.0 .0 {
             obj.get()
         } else {

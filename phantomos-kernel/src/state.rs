@@ -8,11 +8,11 @@ pub mod system {
     }
 
     pub fn get_kernel_state() -> &'static KernelState {
-        let mut ret: &'static KernelState;
+        let mut ret: *const KernelState;
         unsafe {
             core::arch::asm!("lea {}, gs:0", out(reg) ret);
         }
-        ret
+        unsafe { &*ret }
     }
 }
 

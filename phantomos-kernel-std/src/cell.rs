@@ -22,6 +22,8 @@ impl<T: ?Sized> RacyCell<T> {
     pub fn get(&self) -> *mut T {
         self.0.get()
     }
+
+    #[allow(clippy::mut_from_ref)]
     pub unsafe fn get_unchecked_mut(&self) -> &mut T {
         &mut *(self.get())
     }
