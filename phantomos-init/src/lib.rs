@@ -4,6 +4,7 @@
 #![feature(default_alloc_error_handler)]
 #![feature(once_cell)]
 #![feature(panic_info_message)]
+#![warn(unsafe_op_in_unsafe_fn)]
 
 #[cfg(target_arch = "clever")]
 pub mod clever;
@@ -310,8 +311,11 @@ mod idt_setup {
         }
 
         let idtr = IDTR64{base: Box::leak(idt) as *mut _ as u64,limit};
-        
-        asm!("lidt [{0}]", in(reg) (&idtr));
+
+        /// SAFETY: IDT created above is known to be valid
+        unsafe {
+            asm!("lidt [{0}]", in(reg) (&idtr));
+        }
     }
 }
 

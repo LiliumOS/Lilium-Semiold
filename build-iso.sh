@@ -7,8 +7,8 @@ function setup_colors {
             red="$(tput setaf 1)"
             cyan="$(tput setaf 6)"
 
-            export error="${bold}${red}error:${normal}"
-            export status="${bold}${cyan}status:${normal}"
+            export error="${bold}${red}error${normal}:"
+            export status="${bold}${cyan}status${normal}:"
         else
             export error="error:"
             export status="status:"

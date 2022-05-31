@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 std = { path = "../phantomos-kernel-std" }
+phantomos-init = { path = "../phantomos-init" }
 
 [lib]
 crate-type = ["cdylib"]
