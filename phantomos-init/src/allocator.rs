@@ -48,24 +48,22 @@ unsafe impl GlobalAlloc for PhantomAllocator {
             return null_mut();
         };
         // SAFETY: `allocated` is guaranteed to be greater than 0 and less than ARENA_SIZE
-        unsafe {
-            (self.arena.get() as *mut u8).add(allocated)
-        }
+        unsafe { (self.arena.get() as *mut u8).add(allocated) }
     }
 
     unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {}
 }
 
-pub unsafe extern "C" fn kalloc(size: usize, align: usize, _vaddr_hint: Option<NonNull<()>>) -> *mut u8 {
+pub unsafe extern "C" fn kalloc(
+    size: usize,
+    align: usize,
+    _vaddr_hint: Option<NonNull<()>>,
+) -> *mut u8 {
     // SAFETY: contract shall be upheld by calling function
-    unsafe {
-        ALLOCATOR.alloc(Layout::from_size_align_unchecked(size, align))
-    }
+    unsafe { ALLOCATOR.alloc(Layout::from_size_align_unchecked(size, align)) }
 }
 
 pub unsafe extern "C" fn kfree(ptr: *mut u8, size: usize, align: usize) {
     // SAFETY: contract shall be upheld by calling function
-    unsafe {
-        ALLOCATOR.dealloc(ptr, Layout::from_size_align_unchecked(size, align))
-    }
+    unsafe { ALLOCATOR.dealloc(ptr, Layout::from_size_align_unchecked(size, align)) }
 }
