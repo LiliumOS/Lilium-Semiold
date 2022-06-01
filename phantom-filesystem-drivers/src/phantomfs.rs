@@ -280,7 +280,10 @@ impl<S: Read + Seek> ReadFS for PhantomFS<S> {
 
         let objtab = desc.objtab;
 
-        drop(desc); // ensure we don't use it again
+        #[allow(clippy::drop_ref)]
+        {
+            drop(desc); // ensure we don't use it again
+        }
 
         self.stream.seek(SeekFrom::StartFar(objtab))?;
         let objoffset: u64 = obj * u64::try_from(core::mem::size_of::<PhantomFSObject>()).unwrap();
